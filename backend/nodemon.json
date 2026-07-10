@@ -1,0 +1,1 @@
+{"watch": ["src"], "ext": "ts", "ignore": ["src/**/*.spec.ts", "scripts/**/*", "*.log"], "delay": 2000}

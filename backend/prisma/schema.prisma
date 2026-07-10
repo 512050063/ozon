@@ -1,0 +1,1234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  directUrl    = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum ImageBizType {
+  avatar
+  product
+}
+
+enum ImageProvider {
+  local
+  imagehost
+}
+
+model Role {
+  /// 角色ID
+  id          Int      @id @default(autoincrement())
+  /// 角色名称
+  name        String   @unique
+  /// 角色编码
+  code        String   @unique
+  /// 角色描述
+  description String?
+  /// 创建时间
+  createdAt   DateTime @default(now())
+  /// 更新时间
+  updatedAt   DateTime @updatedAt
+  /// 是否系统角色
+  isSystem    Boolean  @default(false)
+  /// 权限列表
+  permissions Json?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  /// 用户ID
+  id                 Int                @id @default(autoincrement())
+  /// 用户名
+  username           String             @unique
+  /// 密码
+  password           String
+  /// 用户状态
+  status             String             @default("active")
+  /// 创建时间
+  createdAt          DateTime           @default(now())
+  /// 更新时间
+  updatedAt          DateTime           @updatedAt
+  /// 微信头像
+  wechatAvatar       String?
+  /// 微信昵称
+  wechatNickname     String?
+  /// 微信OpenID
+  wechatOpenid       String?            @unique
+  /// 微信UnionID
+  wechatUnionid      String?            @unique
+  /// 会员等级
+  memberLevel        String             @default("free")
+  /// 用户头像
+  avatar             String?
+  /// 历史头像（最近5个）
+  avatarHistory      Json?
+  /// 用户昵称
+  nickname           String?
+  /// 手机号码
+  phone              String?
+  /// 角色ID
+  roleId             Int                @default(4)
+  /// 试用到期时间
+  trialExpiration    DateTime?
+  /// 是否已领取试用
+  hasClaimedTrial    Boolean            @default(false)
+  /// 会员到期时间
+  memberExpiration   DateTime?
+  /// 删除时间
+  deletedAt          DateTime?
+  /// 默认 Ozon 店铺ID
+  defaultOzonStoreId Int?
+  /// 当前操作 Ozon 店铺ID
+  currentOzonStoreId Int?
+  /// 当前有效登录会话ID
+  activeLoginSessionId String?
+  role               Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  defaultOzonStore   OzonStore?         @relation("UserDefaultOzonStore", fields: [defaultOzonStoreId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currentOzonStore   OzonStore?         @relation("UserCurrentOzonStore", fields: [currentOzonStoreId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  apiConfigs         ApiConfig[]
+  userTokens         UserToken[]
+  loginSessions      UserLoginSession[]
+  pricingStrategies  PricingStrategy[]
+  collectionItems    CollectionItem[]
+  productItems       ProductItem[]
+  productSelections  ProductSelection[]
+  productSupplies    ProductSupply[]
+  supplySources      SupplySource[]
+  ozonStores         OzonStore[]        @relation("OwnedOzonStores")
+  paymentRecords     PaymentRecord[]
+  images             Image[]
+  imageReferences    ImageReference[]
+  syncLogs           SyncLog[]
+  autoReplyRules     AutoReplyRule[]
+  translationUsages   TranslationUsageMonthly[]
+
+  @@map("users")
+}
+
+model UserLoginSession {
+  /// 会话ID
+  id         String   @id
+  /// 用户ID
+  userId     Int
+  /// 会话状态：active/kicked/logout/expired
+  status     String   @default("active")
+  /// 前端设备ID
+  deviceId   String?
+  /// 登录IP
+  ipAddress  String?
+  /// 浏览器UA
+  userAgent  String?  @db.Text
+  /// 登录时间
+  loginAt    DateTime @default(now())
+  /// 最近检测时间
+  lastSeenAt DateTime @default(now())
+  /// 被踢时间
+  kickedAt   DateTime?
+  /// 退出时间
+  logoutAt   DateTime?
+  /// 过期时间
+  expireAt   DateTime?
+  /// 被踢原因
+  kickReason String?
+  /// 创建时间
+  createdAt  DateTime @default(now())
+  /// 更新时间
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("user_login_sessions")
+}
+
+model WechatLoginSession {
+  /// 会话ID
+  id        Int      @id @default(autoincrement())
+  /// 场景字符串
+  sceneStr  String   @unique
+  /// 票据
+  ticket    String
+  /// 过期时间
+  expireAt  DateTime
+  /// 状态
+  status    String   @default("pending")
+  /// 微信OpenID
+  openid    String?
+  /// 微信UnionID
+  unionid   String?
+  /// 用户ID
+  userId    Int?
+  /// 创建时间
+  createdAt DateTime @default(now())
+  /// 更新时间
+  updatedAt DateTime @updatedAt
+
+  @@map("wechat_login_sessions")
+}
+
+model Product {
+  /// 商品ID
+  id                    Int              @id @default(autoincrement())
+  /// 原始标题
+  titleOriginal         String
+  /// 翻译后标题
+  titleTranslated       String?
+  /// 原始描述
+  descriptionOriginal   String?
+  /// 翻译后描述
+  descriptionTranslated String?
+  /// 价格
+  price                 Float
+  /// 类目名称
+  category              String
+  /// 图片列表数组
+  images                Json?
+  /// 本地创建时间
+  createdAt             DateTime         @default(now())
+  /// 更新时间
+  updatedAt             DateTime         @updatedAt
+  /// 是否归档
+  isArchived            Boolean          @default(false)
+  /// 是否自动归档
+  isAutoArchived        Boolean          @default(false)
+  /// 最低价格
+  minPrice              Float?
+  /// 原价
+  oldPrice              Float?
+  /// Ozon类目ID
+  ozonCategoryId        BigInt?
+  /// Ozon原始API响应（完整备份）
+  ozonOriginalData      Json?
+  /// Ozon商品ID（唯一标识，必须唯一）
+  ozonProductId         String           @unique
+  /// Ozon SKU（允许为空，数据源本身保证唯一性）
+  ozonSku               String?
+  /// 增值税
+  vat                   String?
+  /// 货币代码
+  currencyCode          String?
+  /// 主图URL
+  primaryImage          String?
+  /// 状态名称（俄语）
+  statusName            String?
+  /// Ozon创建时间
+  ozonCreatedAt         DateTime?
+  /// Ozon更新时间
+  ozonUpdatedAt         DateTime?
+  /// 是否有ERROR级别错误
+  hasErrors             Boolean          @default(false)
+  /// 是否有WARNING级别错误
+  hasWarnings           Boolean          @default(false)
+  /// 中文状态
+  statusZh              String?
+  /// FBO库存
+  stockFbo              Int              @default(0)
+  /// FBS库存
+  stockFbs              Int              @default(0)
+  /// 总库存
+  totalStock            Int              @default(0)
+  /// 可见性状态 (VISIBLE/INVISIBLE/ARCHIVED/EMPTY)
+  visibility            String?
+  /// Ozon Offer ID（商家货号，创建商品必填）
+  offerId               String
+  warehouseItems        WarehouseItem[]
+
+  @@map("products")
+}
+
+model WarehouseItem {
+  /// 仓库商品ID
+  id                Int           @id @default(autoincrement())
+  /// 商品ID
+  productId         Int
+  /// 状态
+  status            String        @default("pending")
+  /// 库存数量
+  inventoryQuantity Int           @default(0)
+  /// 创建时间
+  createdAt         DateTime      @default(now())
+  /// 更新时间
+  updatedAt         DateTime      @updatedAt
+  /// Ozon店铺ID（必需字段）
+  ozonStoreId       Int
+  /// Ozon商品ID（必需字段）
+  ozonProductId     String
+  product           Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ozonListings      OzonListing[]
+  ozonStore         OzonStore     @relation(fields: [ozonStoreId], references: [id])
+
+  @@unique([ozonProductId, ozonStoreId])
+  @@map("warehouse_items")
+}
+
+model OzonListing {
+  /// 列表ID
+  id              Int           @id @default(autoincrement())
+  /// 仓库商品ID
+  warehouseItemId Int
+  /// Ozon商品ID
+  ozonProductId   String
+  /// 列表状态
+  listingStatus   String        @default("pending")
+  /// 价格
+  price           Float
+  /// 数量
+  quantity        Int           @default(0)
+  /// 创建时间
+  createdAt       DateTime      @default(now())
+  /// 更新时间
+  updatedAt       DateTime      @updatedAt
+  warehouseItem   WarehouseItem @relation(fields: [warehouseItemId], references: [id], onDelete: Cascade)
+
+  @@map("ozon_listings")
+}
+
+model TranslationCache {
+  /// 缓存ID
+  id             Int      @id @default(autoincrement())
+  /// 原始文本
+  originalText   String   @db.LongText
+  /// 原始文本哈希，用于长文本唯一索引
+  originalHash   String   @db.VarChar(64)
+  /// 翻译文本
+  translatedText String   @db.LongText
+  /// 源语言
+  sourceLang     String
+  /// 目标语言
+  targetLang     String
+  /// 翻译服务
+  service        String
+  /// 使用次数
+  usageCount     Int      @default(1)
+  /// 过期时间
+  expiresAt      DateTime
+  /// 创建时间
+  createdAt      DateTime @default(now())
+  /// 更新时间
+  updatedAt      DateTime @updatedAt
+
+  @@unique([originalHash, sourceLang, targetLang])
+  @@map("translation_cache")
+}
+
+model TranslationUsageMonthly {
+  /// 用量ID
+  id         Int      @id @default(autoincrement())
+  /// 用户ID
+  userId     Int
+  /// 翻译服务
+  provider   String
+  /// 月份 YYYY-MM
+  month      String   @db.VarChar(7)
+  /// 已用字符数
+  usedChars  Int      @default(0)
+  /// 月度字符额度
+  limitChars Int      @default(5000000)
+  /// 创建时间
+  createdAt  DateTime @default(now())
+  /// 更新时间
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, month])
+  @@index([userId, month])
+  @@map("translation_usage_monthly")
+}
+
+model ApiConfig {
+  /// 配置ID
+  id        Int      @id @default(autoincrement())
+  /// 用户ID
+  userId    Int
+  /// 平台
+  platform  String
+  /// 配置内容
+  config    Json
+  /// 状态
+  status    String   @default("valid")
+  /// 创建时间
+  createdAt DateTime @default(now())
+  /// 更新时间
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("api_configs")
+}
+
+model UserToken {
+  /// Token ID
+  id          Int      @id @default(autoincrement())
+  /// 用户ID
+  userId      Int
+  /// 平台 (如 '1688')
+  platform    String
+  /// 加密后的AccessToken
+  accessToken String   @db.Text
+  /// Token过期时间
+  expiresAt   DateTime
+  /// Token获取时间
+  obtainedAt  DateTime
+  /// 创建时间
+  createdAt   DateTime @default(now())
+  /// 更新时间
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("user_tokens")
+}
+
+model PricingStrategy {
+  /// 定价策略ID
+  id              Int      @id @default(autoincrement())
+  /// 用户ID
+  userId          Int
+  /// 策略名称
+  name            String
+  /// 基础价格
+  basePrice       Float
+  /// 运费
+  shippingPrice   Float
+  /// 税率
+  tariffRate      Float
+  /// 利润率
+  profitRate      Float
+  /// 平台费率
+  platformFeeRate Float
+  /// 其他成本
+  otherCost       Float
+  /// 是否默认
+  isDefault       Boolean  @default(false)
+  /// 创建时间
+  createdAt       DateTime @default(now())
+  /// 更新时间
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("pricing_strategies")
+}
+
+model PaymentRecord {
+  /// 支付记录ID
+  id            Int      @id @default(autoincrement())
+  /// 用户ID
+  userId        Int
+  /// 金额
+  amount        Float
+  /// 套餐类型
+  planType      String
+  /// 状态
+  status        String   @default("pending")
+  /// 支付方式
+  paymentMethod String?
+  /// 交易ID
+  transactionId String?
+  /// 创建时间
+  createdAt     DateTime @default(now())
+  /// 更新时间
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payment_records")
+}
+
+model OzonStore {
+  /// Ozon店铺ID
+  id               Int             @id @default(autoincrement())
+  /// 用户ID
+  userId           Int?
+  /// 店铺名称
+  name             String
+  /// 店铺ID
+  storeId          String          @unique
+  /// 地址
+  address          String
+  /// 客户端ID
+  clientId         String
+  /// API密钥
+  apiKey           String
+  /// 状态
+  status           String          @default("active")
+  /// 商品数量
+  productCount     Int             @default(0)
+  /// 创建时间
+  createdAt        DateTime        @default(now())
+  /// 更新时间
+  updatedAt        DateTime        @updatedAt
+  /// API地址
+  apiUrl           String          @default("https://api-seller.ozon.ru/v1/seller/info")
+  /// 国家
+  country          String?
+  /// 货币
+  currency         String?
+  /// 是否高级店铺
+  isPremium        Boolean         @default(false)
+  /// 法人名称
+  legalName        String?
+  /// 评级
+  ratings          Json?
+  /// 税号
+  taxNumber        String?
+  /// 所有权形式
+  ownershipForm    String?
+  /// 原始API数据
+  rawApiData       Json?
+  /// 订阅类型
+  subscriptionType String?
+  /// 税务系统
+  taxSystem        String?
+  /// Ozon 推送密钥
+  pushSecret       String?         @unique
+  /// 是否启用 Ozon 推送
+  pushEnabled      Boolean         @default(true)
+  /// 推送密钥生成时间
+  pushSecretCreatedAt DateTime?
+  warehouseItems   WarehouseItem[]
+  ozonOrders       OzonOrder[]
+  ozonPushEvents   OzonPushEvent[]
+  syncLogs         SyncLog[]
+  user             User?           @relation("OwnedOzonStores", fields: [userId], references: [id], onDelete: SetNull)
+  defaultForUsers  User[]          @relation("UserDefaultOzonStore")
+  currentForUsers  User[]          @relation("UserCurrentOzonStore")
+
+  @@index([userId])
+  @@map("ozon_stores")
+}
+
+model OzonPushEvent {
+  /// 推送事件ID
+  id          Int       @id @default(autoincrement())
+  /// Ozon店铺ID
+  ozonStoreId Int
+  /// 事件幂等键
+  eventKey    String
+  /// 事件类型
+  eventType   String?
+  /// 事件对象ID（订单号、聊天ID等）
+  objectId    String?
+  /// 处理状态
+  status      String    @default("received")
+  /// 原始请求体
+  payload     Json
+  /// 请求头
+  headers     Json?
+  /// 来源IP
+  sourceIp    String?
+  /// 首次接收时间
+  receivedAt  DateTime  @default(now())
+  /// 最近接收时间
+  lastSeenAt  DateTime  @updatedAt
+  /// 关联店铺
+  ozonStore   OzonStore @relation(fields: [ozonStoreId], references: [id], onDelete: Cascade)
+
+  @@unique([ozonStoreId, eventKey])
+  @@index([ozonStoreId])
+  @@index([eventType])
+  @@index([status])
+  @@map("ozon_push_events")
+}
+
+model OzonOrder {
+  /// 订单ID
+  id                    Int       @id @default(autoincrement())
+  /// Ozon店铺ID
+  ozonStoreId           Int
+  /// Ozon订单号
+  postingNumber         String
+  /// 订单状态
+  status                String
+  /// 下单时间
+  inProcessAt           DateTime?
+  /// 发货时间
+  shipmentDate          DateTime?
+  /// 客户名称
+  customerName          String?
+  /// 配送方式
+  deliveryMethod        String?
+  /// 商品明细
+  products              Json?
+  /// 订单金额
+  totalPrice            Float     @default(0)
+  /// 原始订单数据
+  raw                   Json?
+  /// 系统创建时间
+  createdAt             DateTime  @default(now())
+  /// 系统更新时间
+  updatedAt             DateTime  @updatedAt
+  /// 取消时间
+  cancelledAt           DateTime?
+  /// 签收时间
+  deliveredAt           DateTime?
+  /// 物流承运商
+  deliveryService       String?
+  /// 预计送达时间
+  estimatedDeliveryDate DateTime?
+  /// 包裹高度(cm)
+  height                Int?
+  /// 包裹长度(cm)
+  length                Int?
+  /// 订单创建时间(Ozon)
+  orderCreatedAt        DateTime?
+  /// 跟踪号
+  trackingNumber        String?
+  /// 包裹重量(克)
+  weight                Float?
+  /// 包裹宽度(cm)
+  width                 Int?
+  /// 取消信息(JSON)
+  cancellation          Json?
+  /// 客户ID
+  customerId            String?
+  /// 是否快递
+  isExpress             Boolean?  @default(false)
+  /// 包裹数量
+  multiBoxQty           Int?      @default(1)
+  /// Ozon订单ID
+  orderId               String?
+  /// 子状态
+  substatus             String?
+  /// 物流集成类型
+  tplIntegrationType    String?
+  ozonStore             OzonStore @relation(fields: [ozonStoreId], references: [id])
+
+  @@unique([ozonStoreId, postingNumber])
+  @@index([ozonStoreId])
+  @@index([status])
+  @@index([inProcessAt])
+  @@index([deliveredAt])
+  @@index([orderCreatedAt])
+  @@map("ozon_orders")
+}
+
+model Image {
+  /// 图片ID
+  id              Int                   @id @default(autoincrement())
+  /// 用户ID
+  userId          Int
+  /// 业务类型
+  bizType         ImageBizType          @default(product)
+  /// 存储提供方
+  provider        ImageProvider         @default(local)
+  /// 存储提供方图片ID
+  providerAssetId String?               @db.VarChar(255)
+  /// 文件名
+  fileName        String
+  /// 文件URL
+  fileUrl         String                @db.Text
+  /// 文件大小
+  fileSize        Int
+  /// 文件类型
+  fileType        String
+  /// 宽度
+  width           Int?
+  /// 高度
+  height          Int?
+  /// 缩略图URL
+  thumbnailUrl    String?               @db.Text
+  /// 是否删除
+  isDeleted       Boolean               @default(false)
+  /// 删除时间
+  deletedAt       DateTime?
+  /// 创建时间
+  createdAt       DateTime              @default(now())
+  /// 更新时间
+  updatedAt       DateTime              @updatedAt
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  references      ImageReference[]
+  collectionItems CollectionItemImage[]
+  productItems    ProductItemImage[]
+
+  @@unique([userId, provider, providerAssetId])
+  @@index([userId, bizType, provider])
+  @@index([isDeleted])
+  @@map("images")
+}
+
+model ImageReference {
+  /// 关联ID
+  id        Int      @id @default(autoincrement())
+  /// 图片ID
+  imageId   Int
+  /// 用户ID
+  userId    Int
+  /// 引用类型
+  refType   String   @db.VarChar(50)
+  /// 引用ID
+  refId     Int
+  /// 引用键
+  refKey    String?  @db.VarChar(100)
+  /// 创建时间
+  createdAt DateTime @default(now())
+  /// 更新时间
+  updatedAt DateTime @updatedAt
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([imageId, refType, refId, refKey])
+  @@index([imageId])
+  @@index([userId, refType])
+  @@map("image_references")
+}
+
+model ProductItem {
+  /// 产品项ID
+  id            Int                @id @default(autoincrement())
+  /// 用户ID
+  userId        Int
+  /// 名称
+  name          String
+  /// 俄语名称
+  nameRu        String?
+  /// 描述
+  description   String
+  /// 类目
+  category      String
+  /// 品牌
+  brand         String
+  /// 型号名称
+  modelName     String
+  /// 包装长度
+  packageLength Float
+  /// 包装宽度
+  packageWidth  Float
+  /// 包装高度
+  packageHeight Float
+  /// 毛重
+  grossWeight   Float
+  /// 阿里巴巴ID
+  alibabaId     String
+  /// 供应商
+  supplier      String
+  /// 价格
+  price         Float
+  /// 状态
+  status        String             @default("pending")
+  /// Ozon商品ID
+  ozonProductId String?
+  /// Ozon店铺ID
+  ozonStoreId   Int?
+  /// 创建时间
+  createdAt     DateTime           @default(now())
+  /// 更新时间
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images        ProductItemImage[]
+
+  @@unique([userId, alibabaId])
+  @@index([userId])
+  @@map("product_items")
+}
+
+model ProductItemImage {
+  /// 产品项图片ID
+  id            Int         @id @default(autoincrement())
+  /// 产品项ID
+  productItemId Int
+  /// 图片ID
+  imageId       Int
+  /// 排序
+  order         Int         @default(0)
+  /// 创建时间
+  createdAt     DateTime    @default(now())
+  productItem   ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+  image         Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([productItemId])
+  @@index([imageId])
+  @@map("product_item_images")
+}
+
+model OzonCategory {
+  /// 类目ID
+  id           Int            @id @default(autoincrement())
+  /// Ozon类目ID
+  ozonId       BigInt
+  /// 类目名称
+  name         String
+  /// 层级
+  level        Int
+  /// 父类目ID
+  parentId     Int?
+  /// Ozon父类目ID
+  ozonParentId BigInt?
+  /// 路径
+  path         String?
+  /// 语言
+  language     String         @default("ZH_HANS")
+  /// 创建时间
+  createdAt    DateTime       @default(now())
+  /// 更新时间
+  updatedAt    DateTime       @updatedAt
+  children     OzonCategory[] @relation("CategoryParentChild")
+  parent       OzonCategory?  @relation("CategoryParentChild", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([ozonId, ozonParentId])
+  @@map("ozon_categories")
+}
+
+model OzonErrorCode {
+  id        Int      @id @default(autoincrement())
+  /// Ozon错误码
+  code      String   @unique
+  /// 俄语错误描述
+  messageRu String?
+  /// 中文错误描述
+  messageZh String?
+  /// 错误级别 ERROR_LEVEL_ERROR / ERROR_LEVEL_WARNING
+  level     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ozon_error_codes")
+}
+
+model SyncLog {
+  /// 日志ID
+  id           Int       @id @default(autoincrement())
+  /// Ozon店铺ID
+  ozonStoreId  Int
+  /// 同步类型 (product/stock/category)
+  syncType     String
+  /// 新增数量
+  syncedCount  Int       @default(0)
+  /// 更新数量
+  updatedCount Int       @default(0)
+  /// 删除数量
+  deletedCount Int       @default(0)
+  /// 同步状态 (success/failed)
+  status       String
+  /// 消息
+  message      String?
+  /// 创建时间
+  createdAt    DateTime  @default(now())
+  /// 操作人用户ID
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id])
+  ozonStore    OzonStore @relation(fields: [ozonStoreId], references: [id])
+
+  @@index([ozonStoreId])
+  @@index([syncType])
+  @@map("sync_logs")
+}
+
+model CollectionItem {
+  /// 采集商品ID
+  id            Int                   @id @default(autoincrement())
+  /// 用户ID
+  userId        Int
+  /// 名称
+  name          String
+  /// 描述
+  description   String                @default("")
+  /// 类目
+  category      String                @default("")
+  /// 品牌
+  brand         String                @default("无品牌")
+  /// 型号名称
+  modelName     String                @default("")
+  /// 包装长度
+  packageLength Float                 @default(0)
+  /// 包装宽度
+  packageWidth  Float                 @default(0)
+  /// 包装高度
+  packageHeight Float                 @default(0)
+  /// 毛重
+  grossWeight   Float                 @default(0)
+  /// 阿里巴巴ID
+  alibabaId     String
+  /// 供应商
+  supplier      String                @default("")
+  /// 价格
+  price         Float                 @default(0)
+  /// 是否已处理
+  isProcessed   Boolean               @default(false)
+  /// 创建时间
+  createdAt     DateTime              @default(now())
+  /// 更新时间
+  updatedAt     DateTime              @updatedAt
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images        CollectionItemImage[]
+
+  @@unique([userId, alibabaId])
+  @@map("collection_items")
+}
+
+model ProductSelection {
+  id                    Int             @id @default(autoincrement())
+  userId                Int
+  name                  String
+  ozonId                String
+  category              String          @default("")
+  /// Ozon 叶子类目/三级类目名称
+  categoryLeaf          String          @default("")
+  descriptionCategoryId Int?
+  typeId                Int?
+  brand                 String          @default("")
+  price                 Float           @default(0)
+  originalPrice         Float           @default(0)
+  discount              Int             @default(0)
+  rating                Float           @default(0)
+  sales                 Int             @default(0)
+  stock                 Int             @default(0)
+  reviews               Int             @default(0)
+  imageUrl              String?         @db.Text
+  productUrl            String?         @db.Text
+  status                String          @default("pending")
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  /// 类型是否已验证（查询ozon_categories表确认存在）
+  categoryVerified      Boolean         @default(false)
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoReplyRules        AutoReplyRule[]
+
+  @@unique([userId, ozonId])
+  @@map("products_selection")
+}
+
+model ProductSupply {
+  /// 供应商品ID
+  id                    Int           @id @default(autoincrement())
+  /// 用户ID
+  userId                Int
+  /// 名称
+  name                  String
+  /// 类目
+  category              String        @default("")
+  /// Ozon 叶子类目/三级类目名称
+  categoryLeaf          String        @default("")
+  /// 品牌
+  brand                 String        @default("")
+  /// 型号名称
+  modelName             String        @default("")
+  /// Ozon offer_id / 型号编码
+  offerId               String?
+  /// 货号 / SKU（本地 SKU 展示字段，不作为 offer_id 提交）
+  sku                   String?
+  /// 1688或历史货号（兼容旧数据）
+  alibabaId             String?
+  /// 供应商
+  supplier              String        @default("")
+  /// 价格
+  price                 Float         @default(0)
+  /// 状态：pending=待上架，listed=已上架
+  status                String        @default("pending")
+  /// 创建时间
+  createdAt             DateTime      @default(now())
+  /// 更新时间
+  updatedAt             DateTime      @updatedAt
+  /// 商品描述
+  description           String        @default("")
+  /// 商品主图URL
+  imageUrl              String        @default("")
+  /// 参考商品的Ozon类目ID（上架时用）
+  ozonCategoryId        BigInt?
+  /// 条形码
+  barcode               String?
+  /// 折扣前价格
+  oldPrice              Float?
+  /// 包装长度（毫米）
+  packageLength         Float?
+  /// 包装宽度（毫米）
+  packageWidth          Float?
+  /// 包装高度（毫米）
+  packageHeight         Float?
+  /// 含包装重量（克）
+  grossWeight           Float?
+  /// Ozon二级描述类目ID
+  descriptionCategoryId Int?
+  /// Ozon类型ID
+  typeId                Int?
+  /// 商品图片列表
+  images                Json?
+  /// Ozon属性值
+  attributes            Json?
+  /// SKU变体属性
+  variantAttributes     Json?
+  /// 隐藏特征
+  hiddenAttributes      Json?
+  /// 保存时使用的模板快照
+  templateSnapshot      Json?
+  /// 列表展示的变体摘要
+  variantSummary        String?       @db.VarChar(500)
+  /// 关联的1688货源信息
+  supplySourceId        Int?
+  /// Ozon上架任务ID（异步轮询用）
+  ozonTaskId            String?
+  /// 上架失败原因
+  listingError          String?
+  /// 最近一次上架使用的店铺ID
+  lastListingStoreId    Int?
+  /// 最近一次上架使用的定价策略ID
+  lastPricingStrategyId Int?
+  /// 最近一次上架确认的最终价格
+  lastListingFinalPrice Float?
+  /// 最近一次上架前检查摘要
+  listingCheckSummary   Json?
+  /// 提交上架时间
+  listingSubmittedAt    DateTime?
+  /// 上架成功时间
+  listedAt              DateTime?
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplySource          SupplySource? @relation(fields: [supplySourceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt, id])
+  @@index([userId, status, createdAt, id])
+  @@index([userId, updatedAt, id])
+  @@index([supplySourceId])
+  @@map("products_supply")
+}
+
+// Ozon 商品类型模板缓存表
+model OzonProductTemplate {
+  /// 模板ID
+  id                    Int      @id @default(autoincrement())
+  /// 类目ID（description_category_id，第二级分类）
+  descriptionCategoryId Int      @db.Int
+  /// 类型ID（type_id，第三级分类，可选）
+  typeId                Int?     @db.Int
+  /// 语言
+  language              String   @default("ZH_HANS") @db.VarChar(20)
+  /// 规范化模板结构
+  templateJson          Json
+  /// Ozon属性原始响应
+  rawAttributes         Json?
+  /// 数据来源
+  source                String   @default("ozon") @db.VarChar(50)
+  /// 缓存时间
+  cachedAt              DateTime @default(now())
+  /// 创建时间
+  createdAt             DateTime @default(now())
+  /// 更新时间
+  updatedAt             DateTime @updatedAt
+
+  @@unique([descriptionCategoryId, typeId, language])
+  @@index([descriptionCategoryId, typeId])
+  @@map("ozon_product_templates")
+}
+
+// 1688货源信息表
+model SupplySource {
+  /// 货源ID
+  id              Int             @id @default(autoincrement())
+  /// 用户ID
+  userId          Int
+  /// 1688商品ID (offerId)
+  alibabaOfferId  String
+  /// 商品标题
+  subject         String
+  /// Ozon完整类目路径
+  category        String          @default("")
+  /// Ozon叶子类目/三级类目名称
+  categoryLeaf    String          @default("")
+  /// 品牌
+  brand           String          @default("无品牌")
+  /// Ozon二级描述类目ID
+  descriptionCategoryId Int?
+  /// Ozon类型ID
+  typeId          Int?
+  /// 批发价（CNY）
+  price           Float           @default(0)
+  /// 代发价（CNY）
+  consignPrice    Float           @default(0)
+  /// 主图URL
+  image           String          @default("")
+  /// 全部主图URL列表
+  images          Json?
+  /// 1688商品详情页链接
+  detailUrl       String          @db.Text
+  /// 供应商名称
+  supplierName    String          @default("")
+  /// 供应商城市
+  city            String          @default("")
+  /// 供应商省份
+  province        String          @default("")
+  /// 综合质量评分
+  qualityScore    Float           @default(0)
+  /// 质量评分详情
+  qualityDetail   Json?
+  /// 供应商等级
+  yxScoreLevel    String          @default("")
+  /// 贸易服务标签
+  tradeServices   Json?
+  /// 最小起订量
+  moq             Int             @default(1)
+  /// 创建时间
+  createdAt       DateTime        @default(now())
+  /// 更新时间
+  updatedAt       DateTime        @updatedAt
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productSupplies ProductSupply[]
+
+  @@unique([userId, alibabaOfferId])
+  @@map("supply_sources")
+}
+
+model CollectionItemImage {
+  /// 采集商品图片ID
+  id               Int            @id @default(autoincrement())
+  /// 采集商品ID
+  collectionItemId Int
+  /// 图片ID
+  imageId          Int
+  /// 排序
+  order            Int            @default(0)
+  /// 创建时间
+  createdAt        DateTime       @default(now())
+  collectionItem   CollectionItem @relation(fields: [collectionItemId], references: [id], onDelete: Cascade)
+  image            Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([collectionItemId])
+  @@index([imageId])
+  @@map("collection_item_images")
+}
+
+model AutoReplyRule {
+  /// 规则ID
+  id                 Int               @id @default(autoincrement())
+  /// 用户ID
+  userId             Int
+  /// 触发关键词
+  keyword            String            @db.VarChar(100)
+  /// 回复内容
+  replyContent       String            @db.Text
+  /// 启用/禁用状态
+  enabled            Boolean           @default(true)
+  /// 优先级（数值越大越优先）
+  priority           Int               @default(0)
+  /// 创建时间
+  createdAt          DateTime          @default(now())
+  /// 更新时间
+  updatedAt          DateTime          @updatedAt
+  /// 关联商品ID（product类型时）
+  productSelectionId Int?
+  /// 规则类型: store(店铺) / product(商品)
+  type               String            @default("store")
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productSelection   ProductSelection? @relation(fields: [productSelectionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([productSelectionId])
+  @@map("auto_reply_rules")
+}
+
+model FinanceAccrual {
+  id                   Int      @id @default(autoincrement())
+  storeId              Int
+  operationId          String   @db.VarChar(50)
+  operationType        String?  @db.VarChar(50)
+  operationTypeName    String?  @db.VarChar(200)
+  operationDate        DateTime
+  accrualsForSale      Float    @default(0)
+  amount               Float    @default(0)
+  saleCommission       Float    @default(0)
+  deliveryCharge       Float    @default(0)
+  returnDeliveryCharge Float    @default(0)
+  servicesAmount       Float    @default(0)
+  compensationAmount   Float    @default(0)
+  othersAmount         Float    @default(0)
+  type                 String?  @db.VarChar(50)
+  postingNumber        String?  @db.VarChar(50)
+  deliverySchema       String?  @db.VarChar(20)
+  itemsJson            Json?
+  servicesJson         Json?
+  rawData              Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([storeId, operationId])
+  @@index([storeId, operationDate])
+  @@index([storeId, postingNumber])
+  @@index([storeId, type])
+  @@map("finance_accruals")
+}
+
+// Ozon 分类属性缓存表（用于减少 API 调用）
+model OzonCategoryAttribute {
+  /// 属性ID（主键）
+  id                    Int                  @id @default(autoincrement())
+  /// Ozon 属性ID（来自 API）
+  ozonAttributeId       Int                  @db.Int
+  /// 类目ID（description_category_id，第二级分类）
+  descriptionCategoryId Int                  @db.Int
+  /// 类型ID（type_id，第三级分类，可选）
+  typeId                Int?                 @db.Int
+  /// 属性名称
+  name                  String               @db.VarChar(200)
+  /// 属性描述
+  description           String?              @db.Text
+  /// 属性类型（string/number/boolean/textarea/select等）
+  type                  String               @db.VarChar(50)
+  /// 是否必填
+  isRequired            Boolean              @default(false)
+  /// 字典ID（如果有预设值列表）
+  dictionaryId          Int?                 @db.Int
+  /// 分组ID（如果 API 返回）
+  groupId               Int?                 @db.Int
+  /// 分组名称（如果 API 返回）
+  groupName             String?              @db.VarChar(100)
+  /// 是否为集合属性
+  isCollection          Boolean              @default(false)
+  /// 是否为依赖属性
+  isDependent           Boolean              @default(false)
+  /// 精度（数字类型用）
+  precision             Int?                 @db.Int
+  /// 创建时间
+  createdAt             DateTime             @default(now())
+  /// 更新时间
+  updatedAt             DateTime             @updatedAt
+  /// 关联的属性值列表
+  attributeValues       OzonAttributeValue[]
+
+  @@unique([ozonAttributeId, descriptionCategoryId, typeId])
+  @@index([descriptionCategoryId, typeId])
+  @@index([dictionaryId])
+  @@map("ozon_category_attributes")
+}
+
+// Ozon 属性值缓存表（用于下拉选择的预设值）
+model OzonAttributeValue {
+  /// 值ID（主键）
+  id          Int                   @id @default(autoincrement())
+  /// 关联的属性ID
+  attributeId Int
+  /// Ozon 字典值ID
+  valueId     Int                   @db.Int
+  /// 显示文本
+  value       String                @db.VarChar(500)
+  /// 创建时间
+  createdAt   DateTime              @default(now())
+  /// 更新时间
+  updatedAt   DateTime              @updatedAt
+  /// 关联的属性
+  attribute   OzonCategoryAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([attributeId, valueId])
+  @@index([attributeId])
+  @@map("ozon_attribute_values")
+}
+
+// Ozon 平台配置表（搜索数量、缓存时间、Cookie更新时间等）
+model OzonConfig {
+  /// 配置ID（固定为1，单条记录）
+  id               Int       @id @default(autoincrement())
+  /// 搜索数量限制（默认50）
+  searchLimit      Int       @default(50)
+  /// 缓存最大时长（小时，默认2）
+  cacheMaxAge      Int       @default(2)
+  /// 最后一次类目同步时间
+  lastCategorySync DateTime?
+  /// Cookie 最后更新时间
+  cookieUpdatedAt  DateTime?
+  /// 创建时间
+  createdAt        DateTime  @default(now())
+  /// 更新时间
+  updatedAt        DateTime  @updatedAt
+
+  @@map("ozon_config")
+}

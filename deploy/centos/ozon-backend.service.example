@@ -1,0 +1,18 @@
+[Unit]
+Description=Ozon Cross-border Assistant Backend
+After=network.target mysqld.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ozon/backend
+EnvironmentFile=/opt/ozon/backend/.env.production
+ExecStart=/usr/bin/node /opt/ozon/backend/dist/entry.js
+Restart=always
+RestartSec=5
+User=ozon
+Group=ozon
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

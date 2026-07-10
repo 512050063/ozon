@@ -1,0 +1,367 @@
+/* ========================================
+   组件专用样式
+   ======================================== */
+
+/* 弹窗/抽屉公共头部：仅用于已有“图标 + 标题 + 副标题”的面板 */
+.app-surface-header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 22px 24px 18px;
+  text-align: left;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.72));
+}
+
+.app-surface-header--drawer {
+  width: 100%;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.app-surface-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  overflow: hidden;
+  border: 1px solid rgba(191, 219, 254, 0.86);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.app-surface-icon .el-icon,
+.app-surface-icon svg {
+  width: 24px;
+  height: 24px;
+  color: #2563eb;
+  font-size: 24px;
+}
+
+.app-surface-title-wrapper {
+  min-width: 0;
+  text-align: left;
+}
+
+.app-surface-title {
+  display: block;
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.app-surface-subtitle {
+  display: block;
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.el-drawer__header .app-surface-header--drawer {
+  margin-bottom: 0;
+}
+
+.app-table-wrapper {
+  width: 100%;
+  min-height: 300px;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-top: 0 !important;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 255, 0.72));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.app-table-wrapper--embedded {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.app-table {
+  width: 100%;
+  min-width: var(--app-table-min-width, 760px);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.app-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.app-table-header {
+  background: var(--app-table-header-bg, #f8fbff) !important;
+}
+
+.app-table-th,
+.app-table .app-table-th {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: var(--app-table-header-font-size, 12px) !important;
+  font-weight: var(--app-table-header-font-weight, 700) !important;
+  line-height: var(--app-table-header-line-height, 18px) !important;
+  color: var(--app-table-header-color, #334155) !important;
+  letter-spacing: 0 !important;
+  background: var(--app-table-header-bg, #f8fbff) !important;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.app-table-body {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+.app-table-row {
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-table-row:hover {
+  background-color: #f8fbff;
+  box-shadow: inset 3px 0 0 rgba(37, 99, 235, 0.48);
+}
+
+.app-table-td,
+.app-table .app-table-td {
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #2b3747;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid rgba(241, 245, 249, 0.92);
+}
+
+.app-table-th.center,
+.app-table-td.center {
+  text-align: center;
+}
+
+.app-table-th.right,
+.app-table-td.right {
+  text-align: right;
+}
+
+/* 空状态 */
+.app-table-empty {
+  min-height: 320px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(219, 234, 254, 0.28), transparent 34%),
+    rgba(255, 255, 255, 0.82);
+}
+
+.app-table-wrapper--empty {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-table-wrapper--empty .app-table-scroll {
+  flex: 0 0 auto;
+}
+
+.app-table-wrapper--empty .app-table-empty {
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+
+.app-table-empty,
+.app-table-empty * {
+  cursor: default;
+}
+
+.app-table-empty-cell {
+  height: 320px;
+  padding: 0 16px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  cursor: default !important;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(219, 234, 254, 0.28), transparent 34%),
+    rgba(255, 255, 255, 0.82);
+}
+
+.app-table-empty-cell:hover {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(219, 234, 254, 0.28), transparent 34%),
+    rgba(255, 255, 255, 0.82) !important;
+  box-shadow: none !important;
+}
+
+.app-table-wrapper--fill-empty {
+  display: flex;
+  flex: 1;
+  min-height: 400px;
+  flex-direction: column;
+}
+
+.app-table-wrapper--fill-empty .app-table-scroll {
+  flex: 0 0 auto;
+}
+
+.app-table-wrapper--fill-empty .app-table-empty {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.app-table-tag,
+.app-table-wrapper .el-tag,
+.app-table .el-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  min-width: 38px;
+  max-width: 100%;
+  height: 26px !important;
+  padding: 0 8px !important;
+  overflow: hidden;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 16px !important;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.app-table-tag--success,
+.app-table-tag.el-tag--success,
+.app-table-wrapper .el-tag.el-tag--success,
+.app-table .el-tag.el-tag--success {
+  background: #dcf7e8 !important;
+  border-color: #bbf7d0 !important;
+  color: #059669 !important;
+}
+
+.app-table-tag--info,
+.app-table-tag.el-tag--info,
+.app-table-wrapper .el-tag.el-tag--info,
+.app-table .el-tag.el-tag--info {
+  background: #eef2f7 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.app-table-tag--warning,
+.app-table-tag.el-tag--warning,
+.app-table-wrapper .el-tag.el-tag--warning,
+.app-table .el-tag.el-tag--warning {
+  background: #fff2d8 !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+.app-table-tag--danger,
+.app-table-tag.el-tag--danger,
+.app-table-wrapper .el-tag.el-tag--danger,
+.app-table .el-tag.el-tag--danger {
+  background: #fee7e7 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
+}
+
+.app-table-tag--blue,
+.app-table-tag.el-tag--primary,
+.app-table-wrapper .el-tag.el-tag--primary,
+.app-table .el-tag.el-tag--primary {
+  background: #e4efff !important;
+  border-color: #bfdbfe !important;
+  color: #2563eb !important;
+}
+
+.app-table-tag--purple {
+  background: #f0e7ff !important;
+  border-color: #ddd6fe !important;
+  color: #7c3aed !important;
+}
+
+.app-table-tag--orange {
+  background: #fff0df !important;
+  border-color: #fed7aa !important;
+  color: #c2410c !important;
+}
+
+.app-table-tag--clickable {
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-table-tag--clickable:hover {
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  filter: brightness(0.98);
+}
+
+/* 上传素材对话框样式 */
+body .upload-dialog .el-dialog__header {
+  padding: 0;
+  margin-bottom: 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+body .upload-dialog .el-dialog__title {
+  margin: 0 auto;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+body .upload-dialog .el-dialog__body {
+  padding-top: 0;
+  padding-bottom: 15px;
+}
+
+@media (max-width: 1500px) {
+  .app-table-th,
+  .app-table .app-table-th {
+    padding: 11px 12px;
+  }
+
+  .app-table-td,
+  .app-table .app-table-td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 1400px) {
+  .app-table-wrapper {
+    min-height: 260px;
+  }
+
+  .app-table-th,
+  .app-table .app-table-th {
+    padding: 10px 10px;
+  }
+
+  .app-table-td,
+  .app-table .app-table-td {
+    padding: 9px 10px;
+  }
+}

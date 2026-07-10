@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  /* ===== 搜索框专用样式 - 仅适用于原生 input，不影响 Element Plus 组件 ===== */
+  .search-input-native input {
+    padding: 0.5rem 0.75rem;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1e293b;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: none;
+  }
+
+  .search-input-native input::placeholder {
+    color: #94a3b8;
+    font-size: 14px;
+    opacity: 1;
+    transition: none;
+  }
+
+  .search-input-native svg {
+    display: inline-flex;
+    vertical-align: middle;
+    transition: none;
+  }
+
+  /* ===== AppTable 自定义表格组件样式 ===== */
+  .app-table table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    width: 100%;
+  }
+
+  .app-table th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    background-color: #f8fafc;
+    white-space: nowrap;
+    letter-spacing: 0.025em;
+  }
+
+  .app-table td {
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .app-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+
+  .app-table tbody tr:hover {
+    background-color: #f1f5f9;
+  }
+
+  /* ===== 自定义表单容器样式 ===== */
+  .app-form button {
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: none;
+  }
+
+  .app-form input,
+  .app-form select,
+  .app-form textarea {
+    border-radius: 0.375rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    transition: none;
+  }
+
+  .app-form input:focus,
+  .app-form select:focus,
+  .app-form textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* ===== 按钮组件 ===== */
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition-property: all;
+    transition-duration: 200ms;
+  }
+
+  .btn-primary {
+    background-color: #2563eb;
+    color: #ffffff;
+  }
+  .btn-primary:hover {
+    background-color: #1d4ed8;
+  }
+  .btn-primary:disabled {
+    background-color: #d1d5db;
+  }
+
+  .btn-secondary {
+    background-color: #4b5563;
+    color: #ffffff;
+  }
+  .btn-secondary:hover {
+    background-color: #374151;
+  }
+  .btn-secondary:disabled {
+    background-color: #d1d5db;
+  }
+
+  .btn-danger {
+    background-color: #dc2626;
+    color: #ffffff;
+  }
+  .btn-danger:hover {
+    background-color: #b91c1c;
+  }
+  .btn-danger:disabled {
+    background-color: #d1d5db;
+  }
+
+  .btn-success {
+    background-color: #16a34a;
+    color: #ffffff;
+  }
+  .btn-success:hover {
+    background-color: #15803d;
+  }
+  .btn-success:disabled {
+    background-color: #d1d5db;
+  }
+
+  /* ===== 卡片组件 ===== */
+  .card {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+  }
+
+  /* ===== 输入框组件 ===== */
+  .input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+  .input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+
+  /* ===== 标签组件 ===== */
+  .label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+  }
+
+  /* ===== 容器组件 ===== */
+  .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  @media (min-width: 640px) {
+    .container-fluid {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .container-fluid {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  /* ===== 页面头部组件 ===== */
+  .page-header {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 640px) {
+    .page-header {
+      flex-direction: row;
+    }
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+  }
+}

@@ -1,0 +1,58 @@
+/* Unified loading and skeleton states */
+:root {
+  --app-loading-bg: #eef3f9;
+  --app-loading-highlight: rgba(255, 255, 255, 0.72);
+  --app-loading-text: #94a3b8;
+  --app-loading-primary: #3b82f6;
+}
+
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(1px);
+}
+
+.el-loading-spinner .circular {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+.el-loading-spinner .path {
+  stroke: var(--app-loading-primary) !important;
+  stroke-width: 3;
+}
+
+.el-loading-spinner .el-loading-text {
+  margin-top: 8px !important;
+  color: var(--app-loading-text) !important;
+  font-size: 12px !important;
+}
+
+.app-loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-loading-text);
+  font-size: 12px;
+}
+
+.app-skeleton-surface {
+  position: relative;
+  overflow: hidden;
+  background: var(--app-loading-bg);
+  border-radius: 8px;
+}
+
+.app-skeleton-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--app-loading-highlight), transparent);
+  animation: app-loading-shimmer 1.45s infinite;
+}
+
+@keyframes app-loading-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

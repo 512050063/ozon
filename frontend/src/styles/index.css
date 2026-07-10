@@ -1,0 +1,37 @@
+/* ========================================
+   样式主入口文件
+   引入所有模块化样式文件
+   ======================================== */
+
+/* Tailwind CSS 基础配置 */
+@import "./tailwind.css";
+
+/* 全局光标样式 */
+@import "./cursor.css";
+
+/* 滚动条样式 */
+@import "./scrollbar.css";
+
+/* Element Plus 组件样式覆盖 */
+@import "./element-plus.css";
+
+/* 动画效果 */
+@import "./animations.css";
+
+/* 加载动画与骨架屏 */
+@import "./loading.css";
+
+/* 多分辨率适配 */
+@import "./responsive.css";
+
+/* 组件专用样式 */
+@import "./components.css";
+
+/* UI组件统一样式 */
+@import "./ui.css";
+
+/* 全局图片加载失败兜底 */
+img.app-native-image-fallback {
+  object-fit: contain !important;
+  background: #f8fafc;
+}
