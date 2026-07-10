@@ -18,6 +18,7 @@ ${PKG} install -y \
   wget \
   git \
   nginx \
+  xz \
   python3 \
   python3-pip \
   mysql \
@@ -33,11 +34,41 @@ ${PKG} install -y \
   libXrandr \
   mesa-libgbm \
   pango \
-  alsa-lib
+  alsa-lib \
+  fontconfig
 
-if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(`.`)[0]')" -lt 20 ]]; then
-  curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-  ${PKG} install -y nodejs
+install_node_glibc217() {
+  local node_version="${NODE_VERSION:-20.20.2}"
+  local node_dir="/usr/local/node-v${node_version}-linux-x64-glibc-217"
+  local archive="/tmp/node-v${node_version}-linux-x64-glibc-217.tar.xz"
+  local url="https://unofficial-builds.nodejs.org/download/release/v${node_version}/node-v${node_version}-linux-x64-glibc-217.tar.xz"
+
+  if [ ! -x "${node_dir}/bin/node" ]; then
+    echo "Installing Node.js ${node_version} for glibc 2.17 from unofficial builds..."
+    curl -fL --retry 3 --connect-timeout 10 -o "$archive" "$url"
+    rm -rf "$node_dir"
+    tar -xJf "$archive" -C /usr/local
+    rm -f "$archive"
+  fi
+
+  ln -sf "${node_dir}/bin/node" /usr/local/bin/node
+  ln -sf "${node_dir}/bin/npm" /usr/local/bin/npm
+  ln -sf "${node_dir}/bin/npx" /usr/local/bin/npx
+}
+
+GLIBC_VERSION="$(ldd --version 2>&1 | head -n 1 | grep -oE '[0-9]+\.[0-9]+' | tail -n 1 || echo 0)"
+if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(`.`)[0]' 2>/dev/null || echo 0)" -lt 20 ]]; then
+  if python - "$GLIBC_VERSION" <<'PY'
+import sys
+from distutils.version import LooseVersion
+sys.exit(0 if LooseVersion(sys.argv[1]) < LooseVersion("2.28") else 1)
+PY
+  then
+    install_node_glibc217
+  else
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+    ${PKG} install -y nodejs
+  fi
 fi
 
 python3 -m pip install --upgrade pip

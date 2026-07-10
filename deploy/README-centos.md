@@ -66,6 +66,7 @@ NODE_ENV="production"
 PORT=3000
 CORS_ORIGIN="https://your-domain.com"
 CHROME_PATH="/usr/bin/google-chrome"
+PYTHON_PATH="/opt/ozon-python/bin/python"
 EOF
 ```
 

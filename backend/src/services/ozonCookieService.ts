@@ -82,7 +82,8 @@ export async function fetchOzonCookie(): Promise<CookieResult> {
 // 运行Cookie脚本
 function runCookieScript(scriptPath: string, resolve: (result: CookieResult) => void) {
   const scriptDir = path.dirname(scriptPath);
-  const command = `python "${scriptPath}"`;
+  const pythonPath = process.env.PYTHON_PATH || 'python';
+  const command = `"${pythonPath}" "${scriptPath}"`;
   
   logger.info(`正在执行Cookie脚本: ${command}, cwd: ${scriptDir}`);
   
