@@ -26,6 +26,7 @@ enable_build_toolchain() {
     # Prefer devtoolset-10 when available and fall back to devtoolset-8.
     # shellcheck disable=SC1091
     . /opt/rh/devtoolset-10/enable
+    export LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib/gcc/x86_64-redhat-linux/10:${LD_LIBRARY_PATH:-}"
     log "enabled build toolchain: devtoolset-10"
     return 0
   fi
@@ -33,6 +34,7 @@ enable_build_toolchain() {
   if [ -f /opt/rh/devtoolset-8/enable ]; then
     # shellcheck disable=SC1091
     . /opt/rh/devtoolset-8/enable
+    export LD_LIBRARY_PATH="/opt/rh/devtoolset-8/root/usr/lib/gcc/x86_64-redhat-linux/8:${LD_LIBRARY_PATH:-}"
     log "enabled build toolchain: devtoolset-8"
     return 0
   fi
