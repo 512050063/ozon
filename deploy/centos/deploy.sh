@@ -20,6 +20,26 @@ require_cmd() {
   fi
 }
 
+enable_build_toolchain() {
+  if [ -f /opt/rh/devtoolset-10/enable ]; then
+    # CentOS 7 default gcc is too old for native Node modules like bcrypt.
+    # Prefer devtoolset-10 when available and fall back to devtoolset-8.
+    # shellcheck disable=SC1091
+    . /opt/rh/devtoolset-10/enable
+    log "enabled build toolchain: devtoolset-10"
+    return 0
+  fi
+
+  if [ -f /opt/rh/devtoolset-8/enable ]; then
+    # shellcheck disable=SC1091
+    . /opt/rh/devtoolset-8/enable
+    log "enabled build toolchain: devtoolset-8"
+    return 0
+  fi
+
+  log "no devtoolset found; using default compiler"
+}
+
 if [ ! -d "$APP_DIR/.git" ]; then
   printf '[deploy] %s is not a git checkout\n' "$APP_DIR" >&2
   exit 1
@@ -50,6 +70,8 @@ fi
 set -a
 . "$BACKEND_ENV"
 set +a
+
+enable_build_toolchain
 
 log "installing backend dependencies"
 cd "$APP_DIR/backend"
