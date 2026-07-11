@@ -9,8 +9,14 @@
           :net-total="netTotal"
           :sales-and-returns="salesAndReturns"
           :total-expense="totalExpense"
+          :expense-split="expenseSplit"
           :sales-bar-width="salesBarWidth"
-          :expense-bar-width="expenseBarWidth"
+          :sales-bar-gradient="salesBarGradient"
+          :sales-rows="salesRows"
+          :expense-negative-bar-width="expenseNegativeBarWidth"
+          :expense-positive-bar-width="expensePositiveBarWidth"
+          :expense-negative-bar-gradient="expenseNegativeBarGradient"
+          :expense-positive-bar-gradient="expensePositiveBarGradient"
           :expense-rows="expenseRowsFull"
           :amount-tone-class="amountToneClass"
           :signed-amt="signedAmt"
@@ -90,7 +96,7 @@ import AppDetailDialog from '@/components/ui/AppDetailDialog.vue';
 import FinancePostingTable from './components/FinancePostingTable.vue';
 import FinanceReportToolbar from './components/FinanceReportToolbar.vue';
 import FinanceSummarySection from './components/FinanceSummarySection.vue';
-import { ozonFinanceAPI, type FinanceExpenseRow, type FinanceTotals, type PostingGroupItem, type SyncMeta, type FinanceSyncLogItem } from '@/api/ozonFinanceAPI';
+import { ozonFinanceAPI, type FinanceExpenseRow, type FinanceExpenseSplit, type FinanceTotals, type PostingGroupItem, type SyncMeta, type FinanceSyncLogItem } from '@/api/ozonFinanceAPI';
 import { useOzonStoreContext } from '@/composables/useOzonStoreContext';
 import { useUpdateStore } from '@/store/updateStore';
 import { useProductNameTranslations } from '@/composables/useProductNameTranslations';
@@ -430,6 +436,7 @@ const sortDesc = ref(true);
 const totals = ref<FinanceTotals | null>(null);
 const categories = ref<Array<{ type: string; operation_type_name: string; operation_type_name_zh?: string; accruals_for_sale: number; count: number }>>([]);
 const backendExpenseRows = ref<FinanceExpenseRow[]>([]);
+const backendExpenseSplit = ref<FinanceExpenseSplit | null>(null);
 const groupedItems = ref<PostingGroupItem[]>([]);
 const postingsTotal = ref(0);
 const totalOperations = ref(0);
@@ -502,9 +509,47 @@ const totalExpense = computed(() => {
 
 const salesAndReturns = computed(() => {
   if (!totals.value) return 0;
-  const val = safeNum(totals.value.accruals_for_sale) + safeNum(totals.value.refunds_and_cancellations);
+  const val = safeNum(totals.value.accruals_for_sale);
   return Math.round(val * 100) / 100;
 });
+
+const expenseSplit = computed(() => {
+  if (backendExpenseSplit.value) return backendExpenseSplit.value;
+  const rows = expenseRowsFull.value;
+  const positiveAmount = Math.round(rows.reduce((sum, row) => sum + Math.max(0, safeNum(row.value)), 0) * 100) / 100;
+  const negativeAmount = Math.round(rows.reduce((sum, row) => sum + Math.min(0, safeNum(row.value)), 0) * 100) / 100;
+  return { positiveAmount, negativeAmount };
+});
+
+const expenseRowColorMap = [
+  '#3a7bd5',
+  '#d48600',
+  '#c83f78',
+  '#2f6fdb',
+  '#7567d8',
+  '#2c9a8a',
+  '#21a6a1',
+  '#b36a2e',
+  '#5d7ce2',
+  '#9b59d0',
+];
+
+const expenseColorByLabel: Record<string, string> = {
+  '其他服务与罚款': '#3a7bd5',
+  '配送服务': '#d48600',
+  '推广和广告': '#c83f78',
+  'Ozon代理佣金': '#2f6fdb',
+  '合作伙伴服务': '#7567d8',
+  'WHD服务': '#2c9a8a',
+  '赔偿和赔偿返还': '#9b59d0',
+  '借贷和托收信贷': '#68a44c',
+  'Ozon配送服务': '#5d7ce2',
+  '其他应计项目': '#8a63d2',
+};
+
+function getExpenseRowColor(label: string, index: number): string {
+  return expenseColorByLabel[label] || expenseRowColorMap[index % expenseRowColorMap.length];
+}
 
 const netTotal = computed(() => {
   if (!totals.value) return 0;
@@ -513,18 +558,68 @@ const netTotal = computed(() => {
     + roundSignedDisplayValue(totals.value.opening_debt);
 });
 
-// 进度条宽度（相对最大值的百分比）
-const salesBarWidth = computed(() => {
-  if (!totals.value) return 0;
-  const max = Math.max(Math.abs(salesAndReturns.value), Math.abs(totalExpense.value), 1);
-  return Math.round((Math.abs(salesAndReturns.value) / max) * 100);
+type SummaryColorRow = {
+  label: string;
+  value: number;
+  color: string;
+  currency?: boolean;
+};
+
+function buildSegmentGradient(rows: SummaryColorRow[], fallbackColor = '#cbd5e1'): string {
+  const activeRows = rows.filter((row) => Math.abs(safeNum(row.value)) > 0);
+  const total = activeRows.reduce((sum, row) => sum + Math.abs(safeNum(row.value)), 0);
+  if (!total) return `linear-gradient(90deg, ${fallbackColor} 0%, ${fallbackColor} 100%)`;
+
+  let cursor = 0;
+  const stops: string[] = [];
+  activeRows.forEach((row, index) => {
+    const ratio = Math.abs(safeNum(row.value)) / total;
+    const start = cursor;
+    const end = index === activeRows.length - 1 ? 100 : Math.min(100, cursor + ratio * 100);
+    stops.push(`${row.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
+    cursor = end;
+  });
+  return `linear-gradient(90deg, ${stops.join(', ')})`;
+}
+
+const salesRows = computed<SummaryColorRow[]>(() => {
+  if (!totals.value) return [];
+  return [
+    {
+      label: '收入',
+      value: safeNum(totals.value.sales_income ?? totals.value.accruals_for_sale),
+      color: '#0f8f84',
+      currency: true,
+    },
+    {
+      label: '合作伙伴的计划',
+      value: safeNum(totals.value.partner_program),
+      color: '#16a3a0',
+      currency: true,
+    },
+    {
+      label: '折扣积分',
+      value: safeNum(totals.value.discount_points),
+      color: '#78c79b',
+      currency: false,
+    },
+  ];
 });
 
-const expenseBarWidth = computed(() => {
-  if (!totals.value) return 0;
-  const max = Math.max(Math.abs(salesAndReturns.value), Math.abs(totalExpense.value), 1);
-  return Math.round((Math.abs(totalExpense.value) / max) * 100);
+// 统计条按当前模块内的明细项拼满 100%
+const salesBarWidth = computed(() => {
+  return salesRows.value.some((row) => Math.abs(safeNum(row.value)) > 0) ? 100 : 0;
 });
+
+const expenseNegativeBarWidth = computed(() => {
+  return expenseRowsFull.value.some((row) => safeNum(row.value) < 0) ? 100 : 0;
+});
+
+const expensePositiveBarWidth = computed(() => {
+  return expenseRowsFull.value.some((row) => safeNum(row.value) > 0) ? 100 : 0;
+});
+
+const salesBarGradient = computed(() => buildSegmentGradient(salesRows.value, '#cbd5e1'));
 
 const isSyncUpdating = computed(() => updateStore.isUpdating(FINANCE_REPORT_MODULE));
 
@@ -539,7 +634,12 @@ const syncVisualStatus = computed<'success' | 'error' | 'idle'>(() => {
 // 右：Ozon代理佣金 | 合作伙伴服务 | 赔偿和赔偿返还 | Ozon配送服务 | 借贷和托收信贷
 const expenseRowsFull = computed(() => {
   if (backendExpenseRows.value.length > 0) {
-    return [...backendExpenseRows.value].sort((a, b) => Math.abs(safeNum(b.value)) - Math.abs(safeNum(a.value)));
+    return [...backendExpenseRows.value]
+      .map((row, index) => ({
+        ...row,
+        color: getExpenseRowColor(row.label, index),
+      }))
+      .sort((a, b) => Math.abs(safeNum(b.value)) - Math.abs(safeNum(a.value)));
   }
   if (!totals.value) return [];
   const t = totals.value;
@@ -562,18 +662,28 @@ const expenseRowsFull = computed(() => {
 
   return [
     // 左列
-    { label: '推广和广告',    value: advertising,           color: '#db2777' },
-    { label: '配送服务',      value: delivery,              color: '#f59e0b' },
-    { label: '其他服务与罚款', value: others,                color: '#94a3b8' },
-    { label: 'WHD服务',       value: whdService,             color: '#d1d5db' },
-    { label: '其他应计项目',   value: 0,                     color: '#e5e7eb' },
+    { label: '推广和广告',    value: advertising,           color: expenseColorByLabel['推广和广告'] },
+    { label: '配送服务',      value: delivery,              color: expenseColorByLabel['配送服务'] },
+    { label: '其他服务与罚款', value: others,                color: expenseColorByLabel['其他服务与罚款'] },
+    { label: 'WHD服务',       value: whdService,             color: expenseColorByLabel['WHD服务'] },
+    { label: '其他应计项目',   value: 0,                     color: expenseColorByLabel['其他应计项目'] },
     // 右列
-    { label: 'Ozon代理佣金',   value: commission,            color: '#3b82f6' },
-    { label: '合作伙伴服务',   value: partnerService,         color: '#a78bfa' },
-    { label: '赔偿和赔偿返还', value: compensation,           color: '#d1d5db' },
-    { label: 'Ozon配送服务',   value: ozonDelivery,           color: '#d1d5db' },
-    { label: '借贷和托收信贷', value: credit,                 color: '#d1d5db' },
+    { label: 'Ozon代理佣金',   value: commission,            color: expenseColorByLabel['Ozon代理佣金'] },
+    { label: '合作伙伴服务',   value: partnerService,         color: expenseColorByLabel['合作伙伴服务'] },
+    { label: '赔偿和赔偿返还', value: compensation,           color: expenseColorByLabel['赔偿和赔偿返还'] },
+    { label: 'Ozon配送服务',   value: ozonDelivery,           color: expenseColorByLabel['Ozon配送服务'] },
+    { label: '借贷和托收信贷', value: credit,                 color: expenseColorByLabel['借贷和托收信贷'] },
   ].sort((a, b) => Math.abs(safeNum(b.value)) - Math.abs(safeNum(a.value)));
+});
+
+const expenseNegativeBarGradient = computed(() => {
+  const rows = expenseRowsFull.value.filter((row) => safeNum(row.value) < 0);
+  return buildSegmentGradient(rows, '#cbd5e1');
+});
+
+const expensePositiveBarGradient = computed(() => {
+  const rows = expenseRowsFull.value.filter((row) => safeNum(row.value) > 0);
+  return buildSegmentGradient(rows, '#e2e8f0');
 });
 
 // ─── 格式化 ────────────────────────────────────────────
@@ -634,6 +744,7 @@ async function fetchTotals() {
       totals.value = res.data.totals;
       categories.value = res.data.categories || [];
       backendExpenseRows.value = res.data.expenseRows || [];
+      backendExpenseSplit.value = res.data.expenseSplit || null;
       syncMeta.value = res.data.sync;
       normalizeSelectedRangeToBounds();
     }
@@ -907,3 +1018,7 @@ onBeforeUnmount(() => {
 
 }
 </style>
+
+
+
+

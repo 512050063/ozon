@@ -43,42 +43,14 @@
                 {{ signedAmt(salesAndReturns) }} ₽
               </div>
               <div class="ozon-progress-bar sales-bar">
-                <div class="ozon-progress-fill" :style="{ width: salesBarWidth + '%' }" />
+                <div class="ozon-progress-fill" :style="{ width: salesBarWidth + '%', background: salesBarGradient }" />
               </div>
               <div class="ozon-detail-rows">
-                <div class="ozon-detail-row">
-                  <span class="ozon-dot dot-teal" />
-                  <span class="ozon-detail-name">收入</span>
-                  <span :class="['ozon-detail-val', amountToneClass(totals.sales_income ?? totals.accruals_for_sale)]">
-                    {{ fmtAmt(totals.sales_income ?? totals.accruals_for_sale) }} ₽
-                  </span>
-                </div>
-                <div class="ozon-detail-row">
-                  <span class="ozon-dot dot-light-green" />
-                  <span class="ozon-detail-name">合作伙伴的计划</span>
-                  <span :class="['ozon-detail-val', amountToneClass(totals.partner_program || 0)]">
-                    {{ fmtAmt(totals.partner_program || 0) }} ₽
-                  </span>
-                </div>
-                <div class="ozon-detail-row">
-                  <span class="ozon-dot dot-gray" />
-                  <span class="ozon-detail-name">折扣积分</span>
-                  <span :class="['ozon-detail-val', amountToneClass(totals.discount_points || 0)]">
-                    {{ fmtAmt(totals.discount_points || 0) }}
-                  </span>
-                </div>
-                <div class="ozon-detail-row">
-                  <span class="ozon-dot dot-red" />
-                  <span class="ozon-detail-name">退款和取消</span>
-                  <span :class="['ozon-detail-val', amountToneClass(totals.refunds_and_cancellations)]">
-                    {{ fmtAmt(Math.abs(totals.refunds_and_cancellations)) }} ₽
-                  </span>
-                </div>
-                <div class="ozon-detail-row">
-                  <span class="ozon-dot dot-amber" />
-                  <span class="ozon-detail-name">赔偿</span>
-                  <span :class="['ozon-detail-val', amountToneClass(totals.compensation_amount)]">
-                    {{ fmtAmt(Math.abs(totals.compensation_amount)) }} ₽
+                <div v-for="row in salesRows" :key="row.label" class="ozon-detail-row">
+                  <span class="ozon-dot" :style="{ background: row.color }" />
+                  <span class="ozon-detail-name">{{ row.label }}</span>
+                  <span :class="['ozon-detail-val', amountToneClass(row.value)]">
+                    {{ fmtAmt(row.value) }}<template v-if="row.currency"> ₽</template>
                   </span>
                 </div>
               </div>
@@ -91,11 +63,29 @@
                 </span>
                 <span>应计费用</span>
               </div>
-              <div :class="['ozon-big-amount', amountToneClass(totalExpense)]">
-                {{ formatExpenseAmount(totalExpense) }} ₽
-              </div>
-              <div class="ozon-progress-bar expense-bar">
-                <div class="ozon-progress-fill" :style="{ width: expenseBarWidth + '%' }" />
+              <div class="ozon-expense-summary">
+                <div class="ozon-expense-stat expense-negative">
+                  <div :class="['ozon-big-amount', amountToneClass(expenseSplit.negativeAmount)]">
+                    {{ signedAmt(expenseSplit.negativeAmount) }} ₽
+                  </div>
+                  <div class="ozon-progress-bar expense-bar">
+                    <div
+                      class="ozon-progress-fill expense-negative-fill"
+                      :style="{ width: expenseNegativeBarWidth + '%', background: expenseNegativeBarGradient }"
+                    />
+                  </div>
+                </div>
+                <div class="ozon-expense-stat expense-positive">
+                  <div :class="['ozon-big-amount', amountToneClass(expenseSplit.positiveAmount)]">
+                    {{ fmtAmt(expenseSplit.positiveAmount) }} ₽
+                  </div>
+                  <div class="ozon-progress-bar expense-bar">
+                    <div
+                      class="ozon-progress-fill expense-positive-fill"
+                      :style="{ width: expensePositiveBarWidth + '%', background: expensePositiveBarGradient }"
+                    />
+                  </div>
+                </div>
               </div>
               <div class="ozon-expense-grid">
                 <div v-for="row in expenseRows" :key="row.label" class="ozon-expense-item">
@@ -140,6 +130,9 @@ type ExpenseRow = {
   value: number;
   color: string;
 };
+type SalesRow = ExpenseRow & {
+  currency?: boolean;
+};
 
 defineProps<{
   loadingTotals: boolean;
@@ -148,8 +141,14 @@ defineProps<{
   netTotal: number;
   salesAndReturns: number;
   totalExpense: number;
+  expenseSplit: { positiveAmount: number; negativeAmount: number };
   salesBarWidth: number;
-  expenseBarWidth: number;
+  salesBarGradient: string;
+  salesRows: SalesRow[];
+  expenseNegativeBarWidth: number;
+  expensePositiveBarWidth: number;
+  expenseNegativeBarGradient: string;
+  expensePositiveBarGradient: string;
   expenseRows: ExpenseRow[];
   amountToneClass: (value?: number | null) => AmountTone;
   signedAmt: (value?: number | null) => string;
@@ -372,11 +371,59 @@ defineEmits<{
 }
 
 .ozon-progress-bar {
-  height: 1px;
+  height: 6px;
   background: rgba(226, 232, 240, 0.48);
   border-radius: 999px;
   margin-bottom: 12px;
   overflow: hidden;
+}
+
+.ozon-expense-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.9fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ozon-expense-stat {
+  min-width: 0;
+}
+
+.ozon-expense-stat-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.ozon-expense-stat-label.negative {
+  color: #7c3aed;
+}
+
+.ozon-expense-stat .ozon-big-amount {
+  margin-bottom: 10px;
+}
+
+.expense-negative .ozon-progress-fill {
+  background: linear-gradient(
+    90deg,
+    #4f46e5 0%,
+    #4f46e5 54%,
+    #f59e0b 54%,
+    #f59e0b 84%,
+    #d1d5db 84%,
+    #d1d5db 100%
+  );
+}
+
+.expense-positive .ozon-progress-fill.expense-positive-fill {
+  background: linear-gradient(90deg, #10b981, #5eead4);
+}
+
+.expense-positive .ozon-progress-fill.expense-positive-fill,
+.expense-negative .ozon-progress-fill.expense-negative-fill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .ozon-progress-fill {
@@ -469,11 +516,11 @@ defineEmits<{
 .ozon-detail-val.neutral { color: var(--finance-amount-neutral); }
 
 .ozon-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.12);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.08);
 }
 
 .dot-teal { background: #0d9488; }
@@ -501,11 +548,11 @@ defineEmits<{
 }
 
 .ozon-expense-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.12);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.08);
 }
 
 .ozon-expense-name {
