@@ -12,6 +12,8 @@ import {
 import { getImageUploadDir } from '../services/publicAssetUrlService';
 
 const UPLOAD_DIR = getImageUploadDir();
+const ALLOWED_REMOTE_IMAGE_HOST_PATTERN = /(^|\.)ozon(?:ru)?\.(?:ru|cn)$/i;
+const MAX_PROXY_IMAGE_BYTES = 8 * 1024 * 1024;
 
 // 确保上传目录存在
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -38,6 +40,73 @@ const cleanupUserAvatarReferences = async (userId: number, fileUrls: string[]) =
   }
 
   await updateUserAvatarState(prisma, userId, cleaned);
+};
+
+const isAllowedRemoteImageUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false;
+  try {
+    const parsed = new URL(value);
+    return /^https?:$/.test(parsed.protocol) && ALLOWED_REMOTE_IMAGE_HOST_PATTERN.test(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+export const proxyRemoteImage = async (req: Request, res: Response) => {
+  try {
+    const rawUrl = req.query.url;
+    const imageUrl = Array.isArray(rawUrl) ? rawUrl[0] : rawUrl;
+
+    if (!isAllowedRemoteImageUrl(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: '不支持的图片地址'
+      });
+    }
+
+    const response = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Referer': 'https://www.ozon.ru/',
+      },
+    });
+
+    if (!response.ok || !response.body) {
+      return res.status(response.status || 502).end();
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) {
+      return res.status(415).json({
+        success: false,
+        message: '远程地址不是图片'
+      });
+    }
+
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > MAX_PROXY_IMAGE_BYTES) {
+      return res.status(413).json({
+        success: false,
+        message: '图片过大'
+      });
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength > MAX_PROXY_IMAGE_BYTES) {
+      return res.status(413).json({
+        success: false,
+        message: '图片过大'
+      });
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (error: any) {
+    logger.warn(`代理远程图片失败: ${error.message}`);
+    return res.status(502).end();
+  }
 };
 
 // 获取图片列表

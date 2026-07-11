@@ -95,7 +95,6 @@ import ozonStoreRoutes from './routes/ozonStoreRoutes';
 import ozonPushRoutes from './routes/ozonPushRoutes';
 import ozonCategoryRoutes from './routes/ozonCategoryRoutes';
 import imageRoutes from './routes/imageRoutes';
-import collectionRoutes from './routes/collectionRoutes';
 import productSelectionRoutes from './routes/productSelectionRoutes';
 import alibabaRoutes from './routes/alibabaRoutes';
 import ozonCrawlerRoutes from './routes/ozonCrawlerRoutes';
@@ -128,6 +127,10 @@ app.use('/api', (req, res, next) => {
   if (req.path === '/alibaba/auth/token' && req.method === 'GET') {
     return next();
   }
+  // Ozon 远程图片代理用于 <img> 标签展示，浏览器不会附带 Authorization 头；代理内部只允许 Ozon 图片域名
+  if (req.path === '/images/proxy' && req.method === 'GET') {
+    return next();
+  }
   // 其他所有路由都需要认证
   return authenticateToken(req, res, next);
 });
@@ -145,7 +148,6 @@ app.use('/api/ozon/stores', ozonStoreRoutes);
 app.use('/api/ozon/push', ozonPushRoutes);
 app.use('/api/ozon/categories', ozonCategoryRoutes);
 app.use('/api/images', imageRoutes);
-app.use('/api/collection', collectionRoutes);
 app.use('/api/product-selection', productSelectionRoutes);
 app.use('/api/alibaba', alibabaRoutes);
 app.use('/api/ozon/crawler', ozonCrawlerRoutes);

@@ -6,7 +6,8 @@ import {
   deleteImage,
   batchDeleteImages,
   checkImageUsage,
-  checkBatchImageUsage
+  checkBatchImageUsage,
+  proxyRemoteImage
 } from '../controllers/imageController';
 import { authenticateToken } from '../middleware/authMiddleware';
 import multer from 'multer';
@@ -38,6 +39,9 @@ router.delete('/batch', authenticateToken, batchDeleteImages);
 
 // 批量检查图片是否被使用
 router.post('/batch/usage', authenticateToken, checkBatchImageUsage);
+
+// 代理 Ozon 远程图片，避免浏览器直连 CDN 被拒绝
+router.get('/proxy', proxyRemoteImage);
 
 // 检查图片是否被使用
 router.get('/:id/usage', authenticateToken, checkImageUsage);

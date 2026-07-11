@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Picture } from '@element-plus/icons-vue';
+import { toDisplayImageUrl } from '@/utils/imageUrl';
 
 type ImageFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
 
@@ -84,7 +85,7 @@ const state = ref<'empty' | 'loading' | 'loaded' | 'error'>(props.src ? 'loading
 
 const normalizedSrc = computed(() => {
   const value = `${props.src || ''}`.trim();
-  return value || '';
+  return toDisplayImageUrl(value);
 });
 
 const normalizedPreviewList = computed(() => {

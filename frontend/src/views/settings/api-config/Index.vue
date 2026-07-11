@@ -17,7 +17,7 @@
             <el-tab-pane name="wechat-login">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/wx.png" alt="微信" class="w-4 h-4">
+                  <img :src="platformIconUrls.wechat" alt="微信" class="w-4 h-4">
                   <span>微信登录</span>
                 </div>
               </template>
@@ -41,7 +41,7 @@
             <el-tab-pane name="wechat-pay">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/wxzf.png" alt="微信支付" class="w-4 h-4">
+                  <img :src="platformIconUrls.wechatPay" alt="微信支付" class="w-4 h-4">
                   <span>微信支付</span>
                 </div>
               </template>
@@ -65,7 +65,7 @@
             <el-tab-pane name="sms">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/dx.png" alt="短信" class="w-4 h-4">
+                  <img :src="platformIconUrls.sms" alt="短信" class="w-4 h-4">
                   <span>短信认证</span>
                 </div>
               </template>
@@ -89,7 +89,7 @@
             <el-tab-pane name="translation">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/fy.png" alt="中俄翻译" class="w-4 h-4">
+                  <img :src="platformIconUrls.translation" alt="中俄翻译" class="w-4 h-4">
                   <span>中俄翻译</span>
                 </div>
               </template>
@@ -113,7 +113,7 @@
             <el-tab-pane name="1688">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/1688.png" alt="1688" class="w-4 h-4">
+                  <img :src="platformIconUrls.alibaba" alt="1688" class="w-4 h-4">
                   <span>1688平台</span>
                 </div>
               </template>
@@ -270,7 +270,7 @@
             <el-tab-pane name="ozon">
               <template #label>
                 <div class="flex items-center gap-2">
-                  <img src="/src/assets/images/platform/ozon.png" alt="Ozon" class="w-4 h-4">
+                  <img :src="platformIconUrls.ozon" alt="Ozon" class="w-4 h-4">
                   <span>Ozon平台</span>
                 </div>
               </template>
@@ -502,6 +502,7 @@ import AppDetailDialog from '@/components/ui/AppDetailDialog.vue';
 import AppDialog from '@/components/ui/AppDialog.vue';
 import { useUpdateStore } from '@/store/updateStore';
 import { getOzonCategoryCreatedTime, syncOzonCategoriesIncremental, getCategorySyncLogs } from '@/api/ozonCategoryAPI';
+import { platformIconUrls } from '@/utils/assetUrls';
 
 interface ConfigField {
   key: string;

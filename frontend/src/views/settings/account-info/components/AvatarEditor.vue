@@ -140,6 +140,7 @@ import { computed, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useAuthStore } from '@/store/authStore';
 import { getFullImageUrl } from '@/utils/common';
+import { resolveLegacyAssetUrl, systemAvatarUrls } from '@/utils/assetUrls';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -164,21 +165,10 @@ const isSaving = ref(false);
 const isDragging = ref(false);
 const deletingAvatar = ref<string | null>(null);
 
-const systemAvatars = [
-  '/src/assets/images/avatars/t0.png',
-  '/src/assets/images/avatars/t1.png',
-  '/src/assets/images/avatars/t2.png',
-  '/src/assets/images/avatars/t3.png',
-  '/src/assets/images/avatars/t4.png',
-  '/src/assets/images/avatars/t5.png',
-  '/src/assets/images/avatars/t6.png',
-  '/src/assets/images/avatars/t7.png',
-  '/src/assets/images/avatars/t8.png',
-  '/src/assets/images/avatars/t9.png',
-];
+const systemAvatars = systemAvatarUrls;
 
 const isSystemAvatar = (avatar: string | null | undefined) =>
-  typeof avatar === 'string' && avatar.trim().startsWith('/src/assets/images/avatars/');
+  typeof avatar === 'string' && (systemAvatarUrls.includes(avatar.trim()) || Boolean(resolveLegacyAssetUrl(avatar)));
 
 const historyAvatars = computed(() => {
   const rawHistory = Array.isArray(authStore.user?.avatarHistory) ? authStore.user.avatarHistory : [];
