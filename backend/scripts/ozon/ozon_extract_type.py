@@ -185,6 +185,11 @@ def main():
     print("\n[1] 启动浏览器...", file=sys.stderr)
 
     chrome_paths = [
+        os.environ.get('CHROME_PATH', ''),
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
         r'C:\Program Files\Google\Chrome\Application\chrome.exe',
         r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
         os.path.expanduser(r'~\AppData\Local\Google\Chrome\Application\chrome.exe'),

@@ -415,6 +415,11 @@ def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = 
     log("[1] 启动浏览器...")
 
     chrome_paths = [
+        os.environ.get('CHROME_PATH', ''),
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
         r'C:\Program Files\Google\Chrome\Application\chrome.exe',
         r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
         os.path.expanduser(r'~\AppData\Local\Google\Chrome\Application\chrome.exe'),
@@ -425,7 +430,7 @@ def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = 
         launch_args = {'headless': True}
         if executable_path:
             launch_args['executable_path'] = executable_path
-            launch_args['args'] = ['--headless=new']
+            launch_args['args'] = ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage']
             log("[1] 使用系统 Chrome")
 
         browser = p.chromium.launch(**launch_args)
