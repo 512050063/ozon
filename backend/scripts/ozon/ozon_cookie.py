@@ -589,8 +589,35 @@ def main():
             close_chrome(browser, chrome_proc)
             print(json.dumps(cookie_data, ensure_ascii=False))
             return
-        
-        # 5. 不是中文+人民币 → 不再自动点击下拉框配置，直接提示用户处理环境
+
+        # 5. 尝试自动切换语言/货币，然后重新检查页面状态
+        print("[6] 尝试自动切换语言/货币...")
+        auto_switched = False
+        if open_settings_popup(page):
+            lang_ok, curr_ok = select_language_and_currency(page)
+            if lang_ok or curr_ok:
+                auto_switched = click_save(page)
+
+        if auto_switched:
+            page.goto('https://www.ozon.ru/', wait_until='networkidle', timeout=60000)
+            page.wait_for_timeout(3000)
+            status = check_page_status(page)
+            print("[7] 自动切换后重新检测页面状态...")
+            print(f"    中文: {'✓' if status['zh'] else '✗'}")
+            print(f"    人民币: {'✓' if status['cny'] else '✗'}")
+            print(f"    卢布: {'✓' if status['rub'] else '✗'}")
+            if status['priceSamples']:
+                print(f"    价格样例: {', '.join(status['priceSamples'])}")
+
+        if status['zh'] and status['cny']:
+            print("\n[OK] 已切换为中文+人民币，直接导出")
+            cookie_data = export_cookies(context, page)
+            show_result(page, True, ['语言：中文 ✓', '货币：人民币 ✓', 'Cookie 已导出'])
+            close_chrome(browser, chrome_proc)
+            print(json.dumps(cookie_data, ensure_ascii=False))
+            return
+
+        # 6. 自动切换后仍未就绪 → 提示用户手动处理环境
         msg = ['Ozon语言/货币环境异常']
         if not status['zh']:
             msg.append('语言：非中文')

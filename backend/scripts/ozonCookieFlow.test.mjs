@@ -29,10 +29,10 @@ assert.match(
   /existing_cookie_data = load_existing_cookie_data\(\)[\s\S]*validate_cookie_data\(existing_cookie_data\)[\s\S]*apply_cookie_data\(context, existing_cookie_data\)/,
   'main flow should load, validate, and inject existing cookie JSON before visiting Ozon',
 );
-assert.doesNotMatch(
+assert.match(
   mainFlow,
-  /open_settings_popup\(|select_language_and_currency\(|click_save\(/,
-  'main flow should not auto-open Ozon language/currency dropdowns',
+  /open_settings_popup\(page\)[\s\S]*select_language_and_currency\(page\)[\s\S]*click_save\(page\)/,
+  'main flow should auto-open Ozon language/currency dropdowns when environment is not ready',
 );
 assert.match(
   mainFlow,
