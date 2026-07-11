@@ -4,7 +4,7 @@
     <div class="current-plan-banner">
       <div class="current-plan-left">
         <div class="current-plan-avatar">
-          <img src="/src/assets/images/platform/VIP1.png" alt="当前订阅" class="w-7 h-7 object-contain" />
+          <img :src="platformIconUrls.vip" alt="当前订阅" class="w-7 h-7 object-contain" />
         </div>
         <div class="current-plan-copy">
           <h3 class="current-plan-title">当前订阅：{{ currentMemberLevel }}</h3>
@@ -24,7 +24,7 @@
         <!-- 价格区 -->
         <div class="plan-price-area plan-price-area--free">
           <div class="plan-visual">
-            <img src="/src/assets/images/membership/mf_t.png" alt="免费版" class="plan-visual-img" />
+            <img :src="membershipIconUrls.free" alt="免费版" class="plan-visual-img" />
             <span class="plan-visual-title">免费版</span>
           </div>
           <div class="plan-price-left">
@@ -68,7 +68,7 @@
         <!-- 价格区 -->
         <div :class="['plan-price-area', currentMemberLevel === '试用版' ? 'plan-price-area--trial-active' : 'plan-price-area--trial']">
           <div class="plan-visual">
-            <img src="/src/assets/images/membership/sy_t.png" alt="试用版" class="plan-visual-img" />
+            <img :src="membershipIconUrls.trial" alt="试用版" class="plan-visual-img" />
             <span class="plan-visual-title">试用版</span>
           </div>
           <div class="plan-price-left">
@@ -120,7 +120,7 @@
         <!-- 价格区 -->
         <div :class="['plan-price-area', (currentMemberLevel === '标准' || currentMemberLevel === '标准版') ? 'plan-price-area--standard-active' : 'plan-price-area--standard']">
           <div class="plan-visual">
-            <img src="/src/assets/images/membership/bz_t.png" alt="标准版" class="plan-visual-img" />
+            <img :src="membershipIconUrls.standard" alt="标准版" class="plan-visual-img" />
             <span class="plan-visual-title">标准版</span>
           </div>
           <div class="plan-price-left">
@@ -179,7 +179,7 @@
         <!-- 价格区 -->
         <div :class="['plan-price-area', currentMemberLevel === '专业版' ? 'plan-price-area--pro-active' : 'plan-price-area--pro']">
           <div class="plan-visual">
-            <img src="/src/assets/images/membership/zy_t.png" alt="专业版" class="plan-visual-img" />
+            <img :src="membershipIconUrls.professional" alt="专业版" class="plan-visual-img" />
             <span class="plan-visual-title">专业版</span>
           </div>
           <div class="plan-price-left">
@@ -337,6 +337,7 @@ import { paymentRecordAPI } from '@/api/paymentRecordAPI';
 import AppDialog from '@/components/ui/AppDialog.vue';
 import AppPagination from '@/components/ui/AppPagination.vue';
 import { appConfirm } from '@/utils/appConfirm';
+import { membershipIconUrls, platformIconUrls } from '@/utils/assetUrls';
 
 const authStore = useAuthStore();
 

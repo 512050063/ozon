@@ -1012,6 +1012,7 @@
   import { AppUpdateProgressBar } from '@/components/ui';
   import VipDialogSkeleton from '@/components/ui/VipDialogSkeleton.vue';
   import { getFullImageUrl } from '@/utils/common';
+  import { membershipIconUrls } from '@/utils/assetUrls';
   import { getUpdateModuleForPath } from '@/utils/updateRouteScope';
   import { ozonMessageAPI } from '@/api/ozonMessageAPI';
   import { ozonStoreAPI } from '@/api/ozonStoreAPI';
@@ -1368,16 +1369,10 @@
   // 会员等级图标映射
   const memberIcon = computed(() => {
     if (!authStore.user) {
-      return '/src/assets/images/membership/mf_t.png';
+      return membershipIconUrls.free;
     }
     const level = authStore.user.memberLevel || 'free';
-    const icons: Record<string, string> = {
-      trial: '/src/assets/images/membership/sy_t.png', // sy = 试用版(shi yong)
-      free: '/src/assets/images/membership/mf_t.png', // mf = 免费版(mian fei)
-      standard: '/src/assets/images/membership/bz_t.png', // bz = 标准版(biao zhun)
-      professional: '/src/assets/images/membership/zy_t.png', // zy = 专业版(zhuan ye)
-    };
-    return icons[level] || icons['free'];
+    return membershipIconUrls[level] || membershipIconUrls.free;
   });
 
   // 获取当前路径

@@ -104,7 +104,7 @@
               <div class="flex items-center gap-8">
                 <!-- 微信 -->
                 <div class="flex items-center">
-                  <img src="/src/assets/images/platform/wx.png" alt="微信" class="w-8 h-8 rounded-full mr-3" />
+                  <img :src="platformIconUrls.wechat" alt="微信" class="w-8 h-8 rounded-full mr-3" />
                   <div class="text-left">
                     <template v-if="authStore.user?.wechatOpenid">
                       <p class="text-sm text-green-600">
@@ -174,7 +174,7 @@
       <div class="bg-white rounded-xl shadow-xl max-w-xl w-full mx-4 p-8">
         <div class="app-surface-header mb-8">
           <div class="app-surface-icon">
-            <img src="/src/assets/images/icons/faq-aq.svg" class="w-7 h-7" alt="常见问题" />
+            <img :src="faqIconUrls.header" class="w-7 h-7" alt="常见问题" />
           </div>
           <div class="app-surface-title-wrapper">
             <h3 class="app-surface-title">常见问题</h3>
@@ -184,7 +184,7 @@
         <div v-if="currentFAQ" class="space-y-5 text-left">
           <div class="flex items-start">
             <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3 flex-shrink-0">
-              <img src="/src/assets/images/icons/faq-q.svg" class="w-4 h-4" alt="问题" />
+              <img :src="faqIconUrls.question" class="w-4 h-4" alt="问题" />
             </div>
             <div>
               <p class="text-xs font-medium text-blue-600 mb-1">问题</p>
@@ -193,7 +193,7 @@
           </div>
           <div class="flex items-start bg-slate-50 rounded-xl p-4">
             <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center mr-3 flex-shrink-0">
-              <img src="/src/assets/images/icons/faq-a.svg" class="w-4 h-4" alt="回答" />
+              <img :src="faqIconUrls.answer" class="w-4 h-4" alt="回答" />
             </div>
             <div>
               <p class="text-xs font-medium text-emerald-600 mb-1">回答</p>
@@ -494,6 +494,7 @@ import MainLayout from '@/components/MainLayout.vue';
 import AvatarEditor from './components/AvatarEditor.vue';
 import { getFullImageUrl } from '@/utils/common';
 import { appAlert, appConfirm } from '@/utils/appConfirm';
+import { faqIconUrls, platformIconUrls } from '@/utils/assetUrls';
 const authStore = useAuthStore();
 // 获取用户头像URL的辅助函数
 const getUserAvatarUrl = () => {

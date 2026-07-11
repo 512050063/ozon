@@ -30,16 +30,26 @@ CDP_PORT = 9223
 
 def find_chrome():
     """查找 Chrome 路径"""
+    env_chrome = os.environ.get('CHROME_PATH')
+    if env_chrome and os.path.exists(env_chrome):
+        return env_chrome
+
     candidates = [
         CHROME_EXE,
         r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
         os.path.expandvars(r'%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe'),
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/snap/bin/chromium',
     ]
     for c in candidates:
         if os.path.exists(c):
             return c
     try:
-        result = subprocess.run(['where', 'chrome'], capture_output=True, text=True, timeout=5)
+        lookup_cmd = ['where', 'chrome'] if os.name == 'nt' else ['sh', '-lc', 'command -v chromium-browser || command -v chromium || command -v google-chrome || command -v google-chrome-stable']
+        result = subprocess.run(lookup_cmd, capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             return result.stdout.strip().split('\n')[0].strip()
     except:
@@ -84,6 +94,8 @@ def launch_chrome():
         '--disable-web-security',
         '--disable-features=IsolateOrigins,site-per-process',
         '--disable-site-isolation-trials',
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
         '--window-size=1280,720',
         '--window-position=100,100',
         'about:blank',  # 不打开 Ozon，后续在代码里 goto

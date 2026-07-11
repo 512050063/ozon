@@ -1,8 +1,10 @@
 const isAvatarPath = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const SYSTEM_AVATAR_PREFIX = '/src/assets/images/avatars/';
+const BUNDLED_SYSTEM_AVATAR_PATTERN = /^\/assets\/t\d+(?:[-.][^/]*)?\.png(?:[?#].*)?$/i;
 
 export const isSystemAvatar = (avatar: string | null | undefined): boolean =>
-  isAvatarPath(avatar) && avatar.trim().startsWith(SYSTEM_AVATAR_PREFIX);
+  isAvatarPath(avatar) &&
+  (avatar.trim().startsWith(SYSTEM_AVATAR_PREFIX) || BUNDLED_SYSTEM_AVATAR_PATTERN.test(avatar.trim()));
 
 export const normalizeAvatarHistory = (value: unknown): string[] => {
   if (!Array.isArray(value)) {

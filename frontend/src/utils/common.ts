@@ -1,3 +1,5 @@
+import { resolveLegacyAssetUrl } from '@/utils/assetUrls';
+
 const DEFAULT_API_BASE_URL = (import.meta.env as any).DEV ? 'http://localhost:3000/api' : '/api';
 const API_BASE_URL = ((import.meta.env as any).VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 
@@ -6,6 +8,11 @@ export const getBackendBaseUrl = (): string => API_BASE_URL.replace(/\/api$/, ''
 // 获取完整的图片URL
 export const getFullImageUrl = (imagePath: string | null | undefined): string | null => {
   if (!imagePath) return null;
+
+  const legacyAssetUrl = resolveLegacyAssetUrl(imagePath);
+  if (legacyAssetUrl) {
+    return legacyAssetUrl;
+  }
 
   // 如果是完整的URL或浏览器运行时URL，直接返回
   if (
@@ -17,13 +24,8 @@ export const getFullImageUrl = (imagePath: string | null | undefined): string | 
     return imagePath;
   }
 
-  // 如果是系统头像或会员图标（以 / 开头），直接返回
-  if (
-    imagePath.startsWith('/src/assets/images/avatars/') ||
-    imagePath.startsWith('/src/assets/images/membership/') ||
-    imagePath.startsWith('/src/assets/images/platform/') ||
-    imagePath.startsWith('/src/assets/images/icons/')
-  ) {
+  // Vite 打包后的前端静态资源应直接由前端站点提供
+  if (imagePath.startsWith('/assets/')) {
     return imagePath;
   }
 
