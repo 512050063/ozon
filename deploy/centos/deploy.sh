@@ -53,7 +53,7 @@ set +a
 
 log "installing backend dependencies"
 cd "$APP_DIR/backend"
-npm ci
+npm ci --include=dev
 
 log "generating Prisma Client"
 npx prisma generate --schema prisma/schema.prisma
@@ -80,7 +80,7 @@ fi
 
 log "installing frontend dependencies"
 cd "$APP_DIR/frontend"
-npm ci
+npm ci --include=dev
 
 log "building frontend"
 npm run build
