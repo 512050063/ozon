@@ -46,6 +46,11 @@ if [ ! -f "$BACKEND_ENV" ]; then
   exit 1
 fi
 
+# Load production runtime variables so build and PM2 restart inherit the same env.
+set -a
+. "$BACKEND_ENV"
+set +a
+
 log "installing backend dependencies"
 cd "$APP_DIR/backend"
 npm ci

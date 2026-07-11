@@ -67,8 +67,11 @@ PORT=3000
 CORS_ORIGIN="https://your-domain.com"
 CHROME_PATH="/usr/bin/google-chrome"
 PYTHON_PATH="/opt/ozon-python/bin/python"
+PLAYWRIGHT_NODEJS_PATH="/usr/local/node-v20.20.2-linux-x64-glibc-217/bin/node"
 EOF
 ```
+
+If the server's default Node.js cannot run Playwright on CentOS 7, point `PLAYWRIGHT_NODEJS_PATH` to a glibc-compatible Node 20 binary as above.
 
 Create `/opt/ozon/frontend/.env.production` if the API URL differs from the default:
 
