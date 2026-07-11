@@ -1,36 +1,3 @@
-// 图片类型
-export interface ImageItem {
-  id: number;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
-  fileType: string;
-  width?: number;
-  height?: number;
-  thumbnailUrl?: string;
-}
-
-// 采集库商品类型
-export interface CollectionItem {
-  id: number;
-  name: string;
-  description: string;
-  imageId?: number;
-  image?: ImageItem;
-  images?: ImageItem[];
-  category: string;
-  brand: string;
-  modelName: string;
-  packageLength: number;
-  packageWidth: number;
-  packageHeight: number;
-  grossWeight: number;
-  alibabaId: string;
-  supplier: string;
-  price: number;
-  isProcessed: boolean;
-}
-
 // 添加商品表单类型
 export interface AddProductForm {
   name: string;
@@ -92,29 +59,4 @@ export interface FormRules {
 export interface CategoryOption {
   label: string;
   value: string;
-}
-
-// 选品库商品类型
-export interface ProductItem {
-  status: string;
-  supplier: any;
-  id: number;
-  name: string;
-  description: string;
-  imageId?: number;
-  image?: ImageItem;
-  category: string;
-  brand: string;
-  modelName: string;
-  packageLength: number;
-  packageWidth: number;
-  packageHeight: number;
-  grossWeight: number;
-  alibabaId: string;
-  price: number;
-  isListed: boolean;
-  ozonProductId?: string;
-  ozonStoreId?: number;
-  createdAt: string;
-  updatedAt: string;
 }

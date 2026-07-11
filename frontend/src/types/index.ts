@@ -58,17 +58,6 @@ export interface WarehouseItem {
   updatedAt: string;
 }
 
-export interface OzonListing {
-  id: number;
-  warehouseItemId: number;
-  ozonProductId: string;
-  listingStatus: string;
-  price: number;
-  quantity: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface ApiConfig {
   id: number;
   userId: number;

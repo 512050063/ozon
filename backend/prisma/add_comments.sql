@@ -125,17 +125,6 @@ ALTER TABLE warehouse_items MODIFY COLUMN userId INT COMMENT '用户ID';
 ALTER TABLE warehouse_items MODIFY COLUMN ozonStoreId INT COMMENT 'Ozon店铺ID';
 ALTER TABLE warehouse_items MODIFY COLUMN ozonProductId VARCHAR(191) COMMENT 'Ozon商品ID';
 
--- 6. ozon_listings Ozon列表表
-ALTER TABLE ozon_listings COMMENT 'Ozon列表表';
-ALTER TABLE ozon_listings MODIFY COLUMN id INT COMMENT '列表ID';
-ALTER TABLE ozon_listings MODIFY COLUMN warehouseItemId INT COMMENT '仓库商品ID';
-ALTER TABLE ozon_listings MODIFY COLUMN ozonProductId VARCHAR(191) COMMENT 'Ozon商品ID';
-ALTER TABLE ozon_listings MODIFY COLUMN listingStatus VARCHAR(191) COMMENT '列表状态';
-ALTER TABLE ozon_listings MODIFY COLUMN price DOUBLE COMMENT '价格';
-ALTER TABLE ozon_listings MODIFY COLUMN quantity INT COMMENT '数量';
-ALTER TABLE ozon_listings MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
-ALTER TABLE ozon_listings MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
-
 -- 9. translation_cache 翻译缓存表
 ALTER TABLE translation_cache COMMENT '翻译缓存表';
 ALTER TABLE translation_cache MODIFY COLUMN id INT COMMENT '缓存ID';
@@ -222,37 +211,6 @@ ALTER TABLE images MODIFY COLUMN deletedAt DATETIME(3) COMMENT '删除时间';
 ALTER TABLE images MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
 ALTER TABLE images MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
 
--- 16. product_items 产品项表
-ALTER TABLE product_items COMMENT '产品项表';
-ALTER TABLE product_items MODIFY COLUMN id INT COMMENT '产品项ID';
-ALTER TABLE product_items MODIFY COLUMN userId INT COMMENT '用户ID';
-ALTER TABLE product_items MODIFY COLUMN name VARCHAR(191) COMMENT '名称';
-ALTER TABLE product_items MODIFY COLUMN nameRu VARCHAR(191) COMMENT '俄语名称';
-ALTER TABLE product_items MODIFY COLUMN description TEXT COMMENT '描述';
-ALTER TABLE product_items MODIFY COLUMN category VARCHAR(191) COMMENT '类目';
-ALTER TABLE product_items MODIFY COLUMN brand VARCHAR(191) COMMENT '品牌';
-ALTER TABLE product_items MODIFY COLUMN modelName VARCHAR(191) COMMENT '型号名称';
-ALTER TABLE product_items MODIFY COLUMN packageLength DOUBLE COMMENT '包装长度';
-ALTER TABLE product_items MODIFY COLUMN packageWidth DOUBLE COMMENT '包装宽度';
-ALTER TABLE product_items MODIFY COLUMN packageHeight DOUBLE COMMENT '包装高度';
-ALTER TABLE product_items MODIFY COLUMN grossWeight DOUBLE COMMENT '毛重';
-ALTER TABLE product_items MODIFY COLUMN alibabaId VARCHAR(191) COMMENT '阿里巴巴ID';
-ALTER TABLE product_items MODIFY COLUMN supplier VARCHAR(191) COMMENT '供应商';
-ALTER TABLE product_items MODIFY COLUMN price DOUBLE COMMENT '价格';
-ALTER TABLE product_items MODIFY COLUMN status VARCHAR(191) COMMENT '状态';
-ALTER TABLE product_items MODIFY COLUMN ozonProductId VARCHAR(191) COMMENT 'Ozon商品ID';
-ALTER TABLE product_items MODIFY COLUMN ozonStoreId INT COMMENT 'Ozon店铺ID';
-ALTER TABLE product_items MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
-ALTER TABLE product_items MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
-
--- 17. product_item_images 产品项图片关联表
-ALTER TABLE product_item_images COMMENT '产品项图片关联表';
-ALTER TABLE product_item_images MODIFY COLUMN id INT COMMENT '产品项图片ID';
-ALTER TABLE product_item_images MODIFY COLUMN productItemId INT COMMENT '产品项ID';
-ALTER TABLE product_item_images MODIFY COLUMN imageId INT COMMENT '图片ID';
-ALTER TABLE product_item_images MODIFY COLUMN `order` INT COMMENT '排序';
-ALTER TABLE product_item_images MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
-
 -- 18. ozon_categories Ozon类目表
 ALTER TABLE ozon_categories COMMENT 'Ozon类目表';
 ALTER TABLE ozon_categories MODIFY COLUMN id INT COMMENT '类目ID';
@@ -265,26 +223,6 @@ ALTER TABLE ozon_categories MODIFY COLUMN path VARCHAR(191) COMMENT '路径';
 ALTER TABLE ozon_categories MODIFY COLUMN language VARCHAR(191) COMMENT '语言';
 ALTER TABLE ozon_categories MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
 ALTER TABLE ozon_categories MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
-
--- 19. collection_items 采集商品表
-ALTER TABLE collection_items COMMENT '采集商品表';
-ALTER TABLE collection_items MODIFY COLUMN id INT COMMENT '采集商品ID';
-ALTER TABLE collection_items MODIFY COLUMN userId INT COMMENT '用户ID';
-ALTER TABLE collection_items MODIFY COLUMN name VARCHAR(191) COMMENT '名称';
-ALTER TABLE collection_items MODIFY COLUMN description TEXT COMMENT '描述';
-ALTER TABLE collection_items MODIFY COLUMN category VARCHAR(191) COMMENT '类目';
-ALTER TABLE collection_items MODIFY COLUMN brand VARCHAR(191) COMMENT '品牌';
-ALTER TABLE collection_items MODIFY COLUMN modelName VARCHAR(191) COMMENT '型号名称';
-ALTER TABLE collection_items MODIFY COLUMN packageLength DOUBLE COMMENT '包装长度';
-ALTER TABLE collection_items MODIFY COLUMN packageWidth DOUBLE COMMENT '包装宽度';
-ALTER TABLE collection_items MODIFY COLUMN packageHeight DOUBLE COMMENT '包装高度';
-ALTER TABLE collection_items MODIFY COLUMN grossWeight DOUBLE COMMENT '毛重';
-ALTER TABLE collection_items MODIFY COLUMN alibabaId VARCHAR(191) COMMENT '阿里巴巴ID';
-ALTER TABLE collection_items MODIFY COLUMN supplier VARCHAR(191) COMMENT '供应商';
-ALTER TABLE collection_items MODIFY COLUMN price DOUBLE COMMENT '价格';
-ALTER TABLE collection_items MODIFY COLUMN isProcessed BOOLEAN COMMENT '是否已处理';
-ALTER TABLE collection_items MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
-ALTER TABLE collection_items MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
 
 -- 20. products_selection 优选商品表
 ALTER TABLE products_selection COMMENT '优选商品表';
@@ -319,14 +257,6 @@ ALTER TABLE products_supply MODIFY COLUMN price DOUBLE COMMENT '价格';
 ALTER TABLE products_supply MODIFY COLUMN status VARCHAR(191) COMMENT '状态';
 ALTER TABLE products_supply MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
 ALTER TABLE products_supply MODIFY COLUMN updatedAt DATETIME(3) COMMENT '更新时间';
-
--- 23. collection_item_images 采集商品图片关联表
-ALTER TABLE collection_item_images COMMENT '采集商品图片关联表';
-ALTER TABLE collection_item_images MODIFY COLUMN id INT COMMENT '采集商品图片ID';
-ALTER TABLE collection_item_images MODIFY COLUMN collectionItemId INT COMMENT '采集商品ID';
-ALTER TABLE collection_item_images MODIFY COLUMN imageId INT COMMENT '图片ID';
-ALTER TABLE collection_item_images MODIFY COLUMN `order` INT COMMENT '排序';
-ALTER TABLE collection_item_images MODIFY COLUMN createdAt DATETIME(3) COMMENT '创建时间';
 
 -- 24. user_login_sessions 用户登录会话表
 ALTER TABLE user_login_sessions COMMENT '用户登录会话表';

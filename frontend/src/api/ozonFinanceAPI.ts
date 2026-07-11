@@ -28,6 +28,11 @@ export interface FinanceExpenseRow {
   color: string;
 }
 
+export interface FinanceExpenseSplit {
+  positiveAmount: number;
+  negativeAmount: number;
+}
+
 export interface FinanceCategory {
   type: string;
   operation_type_name: string;
@@ -77,6 +82,7 @@ export interface FinanceTotalsResponse {
   totals: FinanceTotals;
   categories: FinanceCategory[];
   expenseRows: FinanceExpenseRow[];
+  expenseSplit?: FinanceExpenseSplit;
   sync: SyncMeta;
 }
 

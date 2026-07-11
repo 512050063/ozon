@@ -103,11 +103,15 @@
       // 1. 优先使用 localStorage 中存储的后端地址（手动覆盖）
       try {
         var stored = localStorage.getItem('backend_url');
-        if (stored) return stored;
+        if (stored) return stored.replace(/\/+$/, '');
       } catch(e) {}
-      // 2. 默认使用 localhost（开发环境和生产环境都适用：
-      //    开发时浏览器在本机执行JS，localhost即本机后端；
-      //    生产环境前后端同机，localhost即同机后端）
+      // 2. HTTP(S) 页面默认回落到当前页面同源地址
+      //    生产环境下 callback.html 通常与后端同域部署，直接走同源 /api；
+      //    开发环境下 Vite 会把 /api 代理到本地后端。
+      if (window.location && /^https?:$/.test(window.location.protocol)) {
+        return window.location.origin.replace(/\/+$/, '');
+      }
+      // 3. 如果直接以 file:// 打开，退回本地后端，方便离线调试
       return 'http://localhost:3000';
     }
 
@@ -122,7 +126,7 @@
       // 从URL读取state参数，传给后端用于识别用户（callback.html跨域无法携带JWT）
       var urlObj = new URL(window.location.href);
       var stateParam = urlObj.searchParams.get('state') || '';
-      var tokenUrl = backendUrl + '/api/alibaba/auth/token?code=' + encodeURIComponent(code);
+      var tokenUrl = new URL('/api/alibaba/auth/token', backendUrl).toString() + '?code=' + encodeURIComponent(code);
       if (stateParam) {
         tokenUrl += '&state=' + encodeURIComponent(stateParam);
       }

@@ -57,6 +57,13 @@ def find_chrome():
     return None
 
 
+def has_graphic_display():
+    """判断当前环境是否可直接启动带窗口的 Chromium。"""
+    if os.name == 'nt':
+        return True
+    return bool(os.environ.get('DISPLAY'))
+
+
 def find_available_port(start_port=CDP_PORT, attempts=20):
     for port in range(start_port, start_port + attempts):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -69,7 +76,7 @@ def find_available_port(start_port=CDP_PORT, attempts=20):
     return None
 
 
-def launch_chrome():
+def launch_chrome(headless=False):
     """启动带调试端口的 Chrome（不打开任何 URL）"""
     chrome = find_chrome()
     if not chrome:
@@ -98,8 +105,15 @@ def launch_chrome():
         '--disable-dev-shm-usage',
         '--window-size=1280,720',
         '--window-position=100,100',
-        'about:blank',  # 不打开 Ozon，后续在代码里 goto
     ]
+
+    if headless:
+        cmd.extend([
+            '--headless=new',
+            '--hide-scrollbars',
+        ])
+    else:
+        cmd.append('about:blank')  # 不打开 Ozon，后续在代码里 goto
 
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -503,8 +517,11 @@ def main():
     print("  Ozon Cookie Export Tool v6.0")
     print("=" * 60)
     
-    # 1. 启动 Chrome
-    chrome_proc, cdp_port = launch_chrome()
+    # 1. 启动 Chrome；云主机无 DISPLAY 时自动切换为 headless
+    headless_mode = not has_graphic_display()
+    if headless_mode:
+        print("[1] 检测到无图形显示环境，使用 headless 模式")
+    chrome_proc, cdp_port = launch_chrome(headless=headless_mode)
     if not chrome_proc or not cdp_port:
         print(json.dumps({"success": False, "reason": "chrome_launch_failed"}, ensure_ascii=False))
         sys.exit(1)

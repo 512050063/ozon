@@ -147,6 +147,8 @@ export interface FinanceTotals {
   refunds_and_cancellations: number;
   services_amount: number;
   compensation_amount: number;
+  expense_positive_amount?: number;
+  expense_negative_amount?: number;
   sales_income: number;
   discount_points: number;
   partner_program: number;
@@ -414,7 +416,7 @@ export function summarizeFinanceOperations(ops: FinanceOperationLike[]): Finance
   }
 
   for (const key of Object.keys(total) as Array<keyof FinanceTotals>) {
-    total[key] = roundMoney(total[key]);
+    total[key] = roundMoney(safeAmount(total[key]));
   }
 
   return total;
@@ -428,7 +430,12 @@ export function buildFinanceExpenseRows(totals: FinanceTotals): FinanceExpenseRo
   return [
     { key: 'advertising', label: '推广和广告', value: signedExpenseValue(totals.services_amount || 0), color: '#db2777' },
     { key: 'delivery', label: '配送服务', value: signedExpenseValue(totals.processing_and_delivery || 0), color: '#f59e0b' },
-    { key: 'other_services', label: '其他服务与罚款', value: signedExpenseValue(totals.others_amount || 0), color: '#94a3b8' },
+    {
+      key: 'other_services',
+      label: '其他服务与罚款',
+      value: signedExpenseValue((totals.others_amount || 0) + (totals.refunds_and_cancellations || 0)),
+      color: '#94a3b8',
+    },
     { key: 'whd_services', label: 'WHD服务', value: signedExpenseValue(totals.whd_services || 0), color: '#d1d5db' },
     { key: 'other_accruals', label: '其他应计项目', value: 0, color: '#e5e7eb' },
     { key: 'ozon_commission', label: 'Ozon代理佣金', value: signedExpenseValue(totals.sale_commission || 0), color: '#3b82f6' },
@@ -439,9 +446,22 @@ export function buildFinanceExpenseRows(totals: FinanceTotals): FinanceExpenseRo
   ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
 }
 
+export function calculateFinanceExpenseSplit(expenseRows: FinanceExpenseRow[]): {
+  positiveAmount: number;
+  negativeAmount: number;
+} {
+  const positiveAmount = roundMoney(
+    expenseRows.reduce((sum, row) => sum + Math.max(0, safeAmount(row.value)), 0)
+  );
+  const negativeAmount = roundMoney(
+    expenseRows.reduce((sum, row) => sum + Math.min(0, safeAmount(row.value)), 0)
+  );
+  return { positiveAmount, negativeAmount };
+}
+
 export function applyCashFlowBalanceToTotals(totals: FinanceTotals, endBalanceAmount: number | null | undefined): FinanceTotals {
   if (endBalanceAmount == null || !Number.isFinite(Number(endBalanceAmount))) return totals;
-  const salesAndReturns = safeAmount(totals.accruals_for_sale) + safeAmount(totals.refunds_and_cancellations);
+  const salesAndReturns = safeAmount(totals.accruals_for_sale);
   const expense = buildFinanceExpenseRows(totals).reduce((sum, row) => sum + safeAmount(row.value), 0);
   const openingDebt = roundMoney(Number(endBalanceAmount) - salesAndReturns - expense);
   return {
@@ -501,7 +521,7 @@ function roundAbsDisplayValue(value: number): number {
 }
 
 export function calculateDisplayedFinanceNetTotal(totals: FinanceTotals): number {
-  const salesAndReturns = safeAmount(totals.accruals_for_sale) + safeAmount(totals.refunds_and_cancellations);
+  const salesAndReturns = safeAmount(totals.accruals_for_sale);
   const expense = buildFinanceExpenseRows(totals).reduce((sum, row) => sum + safeAmount(row.value), 0);
   return roundSignedDisplayValue(salesAndReturns)
     + roundSignedDisplayValue(expense)
@@ -704,7 +724,7 @@ async function getFinanceTotalsStrict(
   };
   const finalizeTotals = () => {
     for (const key of Object.keys(totals) as Array<keyof FinanceTotals>) {
-      totals[key] = roundMoney(totals[key]);
+      totals[key] = roundMoney(safeAmount(totals[key]));
     }
     return totals;
   };

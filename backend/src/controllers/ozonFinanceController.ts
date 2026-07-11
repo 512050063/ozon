@@ -21,8 +21,9 @@ export async function getFinanceTotalsHandler(req: Request, res: Response) {
 
     const totals = await service.enrichTotalsWithOpeningDebt(storeId, date_from, date_to, localTotals);
     const expenseRows = service.buildFinanceExpenseRows(totals);
+    const expenseSplit = service.calculateFinanceExpenseSplit(expenseRows);
 
-    return res.json({ success: true, data: { totals, categories, expenseRows, sync } });
+    return res.json({ success: true, data: { totals, categories, expenseRows, expenseSplit, sync } });
   } catch (err: any) {
     logger.error('[FinanceController] totals error:', err.message);
     return res.status(500).json({ success: false, message: err.message });

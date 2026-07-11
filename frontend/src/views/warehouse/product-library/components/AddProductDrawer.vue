@@ -448,7 +448,7 @@
 import { ref, watch, computed, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Box, Plus, Delete, ArrowUp, ArrowDown, Close, InfoFilled } from '@element-plus/icons-vue';
-import type { AddProductForm, CollectionItem, AddProductSkuRow } from '@/types/selection';
+import type { AddProductForm, AddProductSkuRow } from '@/types/selection';
 import { getCategoryLeaf } from '@/utils/categoryText';
 import { getCurrentDateStr, getPinyinInitials } from '@/utils/common';
 import ImageGalleryPicker from '../../material-library/components/ImageGalleryPicker.vue';
@@ -522,7 +522,7 @@ const deferToNextPaint = () => new Promise<void>(resolve => {
 
 interface Props {
   modelValue: boolean;
-  initialData: Partial<AddProductForm> | Partial<CollectionItem>;
+  initialData: Partial<AddProductForm>;
   existingAlibabaIds: string[];
 }
 interface Emits {

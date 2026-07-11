@@ -155,21 +155,31 @@
                   <span class="more-btn-wrapper"><AppTableButton name="more" /></span>
                   <template #dropdown>
                     <el-dropdown-menu class="product-action-menu">
-                      <el-dropdown-item command="edit">
-                        <el-icon><EditPen /></el-icon>编辑
-                      </el-dropdown-item>
-                      <el-dropdown-item command="price">
-                        <el-icon><PriceTag /></el-icon>价格
-                      </el-dropdown-item>
-                      <el-dropdown-item command="stock">
-                        <el-icon><Box /></el-icon>库存
-                      </el-dropdown-item>
-                      <el-dropdown-item
-                        :command="isArchivedProduct(product) ? 'unarchive' : 'archive'"
-                        :disabled="isArchiveOperationProcessing(product)"
-                      >
-                        <el-icon><FolderOpened /></el-icon>{{ getArchiveActionLabel(product) }}
-                      </el-dropdown-item>
+                      <template v-if="isArchivedProduct(product)">
+                        <el-dropdown-item
+                          command="unarchive"
+                          :disabled="isArchiveOperationProcessing(product)"
+                        >
+                          <el-icon><FolderOpened /></el-icon>{{ getArchiveActionLabel(product) }}
+                        </el-dropdown-item>
+                      </template>
+                      <template v-else>
+                        <el-dropdown-item command="edit">
+                          <el-icon><EditPen /></el-icon>编辑
+                        </el-dropdown-item>
+                        <el-dropdown-item command="price">
+                          <el-icon><PriceTag /></el-icon>价格
+                        </el-dropdown-item>
+                        <el-dropdown-item command="stock">
+                          <el-icon><Box /></el-icon>库存
+                        </el-dropdown-item>
+                        <el-dropdown-item
+                          command="archive"
+                          :disabled="isArchiveOperationProcessing(product)"
+                        >
+                          <el-icon><FolderOpened /></el-icon>{{ getArchiveActionLabel(product) }}
+                        </el-dropdown-item>
+                      </template>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>

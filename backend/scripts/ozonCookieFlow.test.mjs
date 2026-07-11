@@ -39,6 +39,21 @@ assert.match(
   /language_currency_not_ready/,
   'main flow should report language/currency environment errors directly',
 );
+assert.match(
+  cookieScript,
+  /def has_graphic_display\(\):/,
+  'cookie script should detect whether a graphical display is available',
+);
+assert.match(
+  mainFlow,
+  /headless_mode = not has_graphic_display\(\)/,
+  'main flow should switch to headless mode when no display is available',
+);
+assert.match(
+  mainFlow,
+  /launch_chrome\(headless=headless_mode\)/,
+  'main flow should pass the headless flag into Chrome launch',
+);
 assert.doesNotMatch(
   cookieService,
   /requiredCookies\s*=\s*\['session_key'\]/,

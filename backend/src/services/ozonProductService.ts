@@ -1324,16 +1324,6 @@ export async function syncProductsToDatabase(
     if (productsToDelete.length > 0) {
       const productIdsToDelete = productsToDelete.map(item => item.productId);
       
-      // 删除OzonListing关联记录
-      await prisma.ozonListing.deleteMany({
-        where: {
-          warehouseItem: {
-            productId: { in: productIdsToDelete },
-            ozonStoreId: storeId
-          }
-        }
-      });
-
       // 删除WarehouseItem记录
       const deleteWarehouseResult = await prisma.warehouseItem.deleteMany({
         where: {
@@ -1452,7 +1442,7 @@ export async function getProductsFromDatabase(
     
     // 状态映射（与 Ozon 后台保持一致）
     // 销售中: selling（status_name="Продается"）
-    // 准备销售: ready（status_name="Готов к продаже" 或有WARNING错误）
+    // 准备销售: ready（status_name="Готов к продаже" 或只有 WARNING 错误）
     // 错误: error（有ERROR级别错误）
     // 待修改: moderating（只有WARNING级别错误）
     // 商品已下架: unlisted（status_name="不出售"且有停止原因）
@@ -1527,6 +1517,7 @@ export async function getProductsFromDatabase(
       const hasSku = ozonSku && ozonSku !== '0';
       const isNotForSale = statusName === '不出售' || statusName === 'Не продается' || statusName === '袧械 锌褉芯写邪械褌褋褟';
       const isReadyForSaleStatus = statusName === 'Готов к продаже' || statusName === '袚芯褌芯胁 泻 锌褉芯写邪卸械';
+      const isReadyForSale = isReadyForSaleStatus || hasWarningOnly;
       
       // Ozon 后台各 Tab 不是互斥状态：
       // 销售中/准备销售主要看 status_name，错误/待修改按 errors.level 单独统计。
@@ -1542,7 +1533,7 @@ export async function getProductsFromDatabase(
         sellingCount++;
       }
 
-      if (!isArchived && isReadyForSaleStatus) {
+      if (!isArchived && isReadyForSale) {
         readyCount++;
       }
 
@@ -1598,13 +1589,14 @@ export async function getProductsFromDatabase(
       const isSelling = statusName === 'Продается' || statusName === '袩褉芯写邪械褌褋褟';
       const isNotForSale = statusName === '不出售' || statusName === 'Не продается' || statusName === '袧械 锌褉芯写邪械褌褋褟';
       const isReadyForSaleStatus = statusName === 'Готов к продаже' || statusName === '袚芯褌芯胁 泻 锌褉芯写邪卸械';
+      const isReadyForSale = isReadyForSaleStatus || hasWarningOnly;
       const isUnlisted = isNotForSale && !isArchived && !hasErrors && !hasWarnings;
       
       switch (status) {
         case 'selling':
           return !isArchived && isSelling;
         case 'pending':
-          return !isArchived && isReadyForSaleStatus;
+          return !isArchived && isReadyForSale;
         case 'error':
           return !isArchived && hasErrors;
         case 'moderating':
@@ -2657,20 +2649,6 @@ export async function submitProductImport(
   try {
     logger.info(`提交商品到Ozon: ${productData.name}`);
     const { imageUrls, imageIds } = await resolveProductImagesForOzon(productData);
-
-    if (productData.id && imageUrlsChanged(productData, imageUrls)) {
-      try {
-        await prisma.productSupply.update({
-          where: { id: Number(productData.id) },
-          data: {
-            imageUrl: imageUrls[0] || '',
-            images: imageUrls,
-          },
-        });
-      } catch (syncError: any) {
-        logger.warn(`商品图片公网地址回写失败, 商品ID: ${productData.id}, 错误: ${syncError.message}`);
-      }
-    }
 
     const dictionaryValues = await loadImportDictionaryValues(productData);
     const ozonAttributes = enrichOzonProductAttributesForImport(productData, dictionaryValues);

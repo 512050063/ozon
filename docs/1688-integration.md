@@ -146,8 +146,8 @@
 ### 2.6 callback.html 部署
 
 - **生产路径**: `https://58.87.104.60/callback.html` → 对应 `frontend/dist/callback.html`
-- **后端地址获取**: 优先读 `localStorage.backend_url`，否则默认 `http://localhost:3000`
-- 因为 JS 在浏览器执行，`localhost` 始终指向用户本机后端
+- **后端地址获取**: 优先读 `localStorage.backend_url`，否则默认当前页面同源地址（`location.origin`）
+- 因为 JS 在浏览器执行，回调页必须避免把请求打到用户本机 `localhost`
 - 修改 callback.html 后需要 `npm run build` 再上传 dist 版本
 
 ---
@@ -424,7 +424,7 @@
 4. **图搜结果需补全**：`imageQueryBasic` 只返回基础字段，需二次调用详情接口
 5. **关键词降级**：1688对混合/长关键词可能返回 `success=false`，系统自动逐步简化关键词重试
 6. **callback.html部署**：修改后需 `npm run build`，将 `dist/callback.html` 上传到云主机
-7. **Mixed Content**：HTTPS的callback.html调用HTTP的localhost API，某些浏览器可能拦截（开发环境可用HTTP版测试）
+7. **同源调用**：callback.html 默认走当前页面同源 `/api`，仅在手动配置 `backend_url` 时才会改写目标地址
 
 ---
 

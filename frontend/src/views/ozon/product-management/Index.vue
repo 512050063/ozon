@@ -338,8 +338,8 @@ const isArchiveOperationProcessing = (product: any): boolean => {
 
 const getArchiveActionLabel = (product: any): string => {
   if (isArchivingProduct(product)) return '归档中';
-  if (isUnarchivingProduct(product)) return '取消归档中';
-  return isArchivedProduct(product) ? '取消归档' : '归档';
+  if (isUnarchivingProduct(product)) return '恢复中';
+  return isArchivedProduct(product) ? '恢复' : '归档';
 };
 
 const setArchiveOperationProcessing = (productId: string, type: 'archive' | 'unarchive', processing: boolean) => {

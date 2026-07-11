@@ -95,8 +95,6 @@ model User {
   userTokens         UserToken[]
   loginSessions      UserLoginSession[]
   pricingStrategies  PricingStrategy[]
-  collectionItems    CollectionItem[]
-  productItems       ProductItem[]
   productSelections  ProductSelection[]
   productSupplies    ProductSupply[]
   supplySources      SupplySource[]
@@ -259,33 +257,10 @@ model WarehouseItem {
   /// Ozon商品ID（必需字段）
   ozonProductId     String
   product           Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  ozonListings      OzonListing[]
   ozonStore         OzonStore     @relation(fields: [ozonStoreId], references: [id])
 
   @@unique([ozonProductId, ozonStoreId])
   @@map("warehouse_items")
-}
-
-model OzonListing {
-  /// 列表ID
-  id              Int           @id @default(autoincrement())
-  /// 仓库商品ID
-  warehouseItemId Int
-  /// Ozon商品ID
-  ozonProductId   String
-  /// 列表状态
-  listingStatus   String        @default("pending")
-  /// 价格
-  price           Float
-  /// 数量
-  quantity        Int           @default(0)
-  /// 创建时间
-  createdAt       DateTime      @default(now())
-  /// 更新时间
-  updatedAt       DateTime      @updatedAt
-  warehouseItem   WarehouseItem @relation(fields: [warehouseItemId], references: [id], onDelete: Cascade)
-
-  @@map("ozon_listings")
 }
 
 model TranslationCache {
@@ -641,8 +616,6 @@ model Image {
   updatedAt       DateTime              @updatedAt
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   references      ImageReference[]
-  collectionItems CollectionItemImage[]
-  productItems    ProductItemImage[]
 
   @@unique([userId, provider, providerAssetId])
   @@index([userId, bizType, provider])
@@ -674,74 +647,6 @@ model ImageReference {
   @@index([imageId])
   @@index([userId, refType])
   @@map("image_references")
-}
-
-model ProductItem {
-  /// 产品项ID
-  id            Int                @id @default(autoincrement())
-  /// 用户ID
-  userId        Int
-  /// 名称
-  name          String
-  /// 俄语名称
-  nameRu        String?
-  /// 描述
-  description   String
-  /// 类目
-  category      String
-  /// 品牌
-  brand         String
-  /// 型号名称
-  modelName     String
-  /// 包装长度
-  packageLength Float
-  /// 包装宽度
-  packageWidth  Float
-  /// 包装高度
-  packageHeight Float
-  /// 毛重
-  grossWeight   Float
-  /// 阿里巴巴ID
-  alibabaId     String
-  /// 供应商
-  supplier      String
-  /// 价格
-  price         Float
-  /// 状态
-  status        String             @default("pending")
-  /// Ozon商品ID
-  ozonProductId String?
-  /// Ozon店铺ID
-  ozonStoreId   Int?
-  /// 创建时间
-  createdAt     DateTime           @default(now())
-  /// 更新时间
-  updatedAt     DateTime           @updatedAt
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  images        ProductItemImage[]
-
-  @@unique([userId, alibabaId])
-  @@index([userId])
-  @@map("product_items")
-}
-
-model ProductItemImage {
-  /// 产品项图片ID
-  id            Int         @id @default(autoincrement())
-  /// 产品项ID
-  productItemId Int
-  /// 图片ID
-  imageId       Int
-  /// 排序
-  order         Int         @default(0)
-  /// 创建时间
-  createdAt     DateTime    @default(now())
-  productItem   ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
-  image         Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
-
-  @@index([productItemId])
-  @@index([imageId])
-  @@map("product_item_images")
 }
 
 model OzonCategory {
@@ -815,48 +720,6 @@ model SyncLog {
   @@index([ozonStoreId])
   @@index([syncType])
   @@map("sync_logs")
-}
-
-model CollectionItem {
-  /// 采集商品ID
-  id            Int                   @id @default(autoincrement())
-  /// 用户ID
-  userId        Int
-  /// 名称
-  name          String
-  /// 描述
-  description   String                @default("")
-  /// 类目
-  category      String                @default("")
-  /// 品牌
-  brand         String                @default("无品牌")
-  /// 型号名称
-  modelName     String                @default("")
-  /// 包装长度
-  packageLength Float                 @default(0)
-  /// 包装宽度
-  packageWidth  Float                 @default(0)
-  /// 包装高度
-  packageHeight Float                 @default(0)
-  /// 毛重
-  grossWeight   Float                 @default(0)
-  /// 阿里巴巴ID
-  alibabaId     String
-  /// 供应商
-  supplier      String                @default("")
-  /// 价格
-  price         Float                 @default(0)
-  /// 是否已处理
-  isProcessed   Boolean               @default(false)
-  /// 创建时间
-  createdAt     DateTime              @default(now())
-  /// 更新时间
-  updatedAt     DateTime              @updatedAt
-  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  images        CollectionItemImage[]
-
-  @@unique([userId, alibabaId])
-  @@map("collection_items")
 }
 
 model ProductSelection {
@@ -1067,25 +930,6 @@ model SupplySource {
 
   @@unique([userId, alibabaOfferId])
   @@map("supply_sources")
-}
-
-model CollectionItemImage {
-  /// 采集商品图片ID
-  id               Int            @id @default(autoincrement())
-  /// 采集商品ID
-  collectionItemId Int
-  /// 图片ID
-  imageId          Int
-  /// 排序
-  order            Int            @default(0)
-  /// 创建时间
-  createdAt        DateTime       @default(now())
-  collectionItem   CollectionItem @relation(fields: [collectionItemId], references: [id], onDelete: Cascade)
-  image            Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
-
-  @@index([collectionItemId])
-  @@index([imageId])
-  @@map("collection_item_images")
 }
 
 model AutoReplyRule {
