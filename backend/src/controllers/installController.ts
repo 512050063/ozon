@@ -15,6 +15,40 @@ const BACKEND_ROOT = path.resolve(__dirname, '../..');
 const WORKSPACE_ROOT = path.resolve(BACKEND_ROOT, '..');
 const ENV_FILE = path.join(BACKEND_ROOT, '.env.production');
 
+function readCurrentEnvFile(): Record<string, string> {
+  if (!fs.existsSync(ENV_FILE)) {
+    return {};
+  }
+
+  const env: Record<string, string> = {};
+  for (const line of fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!match) {
+      continue;
+    }
+    let value = match[2].trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    env[match[1]] = value;
+  }
+  return env;
+}
+
+function formatEnvLine(key: string, value: string | number | undefined) {
+  if (typeof value === 'number') {
+    return `${key}=${value}`;
+  }
+  return `${key}="${String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
 function jsonSuccess(res: Response, data: any, message = 'ok') {
   res.json({ success: true, data, message });
 }
@@ -50,6 +84,7 @@ export async function configureDatabase(req: Request, res: Response) {
     const database = String(payload.database || '').trim();
     const username = String(payload.username || '').trim();
     const password = String(payload.password || '');
+    const currentEnv = readCurrentEnvFile();
 
     if (!database || !username) {
       return res.status(400).json({ success: false, data: null, message: '数据库名和用户名不能为空' });
@@ -62,19 +97,42 @@ export async function configureDatabase(req: Request, res: Response) {
     await connection.end();
 
     const databaseUrl = `mysql://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${host}:${port}/${database}?charset=utf8mb4`;
-    fs.writeFileSync(
-      ENV_FILE,
-      [
-        `DATABASE_URL="${databaseUrl}"`,
-        `JWT_SECRET="${payload.jwtSecret || generateJwtSecret()}"`,
-        'NODE_ENV="production"',
-        `PORT=${Number(payload.backendPort || process.env.PORT || 3000)}`,
-        `CORS_ORIGIN="${payload.corsOrigin || ''}"`,
-        `CHROME_PATH="${payload.chromePath || process.env.CHROME_PATH || ''}"`,
-        '',
-      ].join('\n'),
-      'utf8',
-    );
+    const nextEnv: Record<string, string | number> = {
+      ...currentEnv,
+      DATABASE_URL: databaseUrl,
+      JWT_SECRET: payload.jwtSecret || currentEnv.JWT_SECRET || generateJwtSecret(),
+      NODE_ENV: 'production',
+      PORT: Number(payload.backendPort || currentEnv.PORT || process.env.PORT || 3000),
+      CORS_ORIGIN: payload.corsOrigin || currentEnv.CORS_ORIGIN || '',
+      CHROME_PATH: payload.chromePath || currentEnv.CHROME_PATH || process.env.CHROME_PATH || '',
+    };
+
+    const preferredOrder = [
+      'DATABASE_URL',
+      'JWT_SECRET',
+      'NODE_ENV',
+      'PORT',
+      'CORS_ORIGIN',
+      'PUBLIC_BASE_URL',
+      'OZON_PUSH_PUBLIC_BASE_URL',
+      'CHROME_PATH',
+      'PYTHON_PATH',
+      'PLAYWRIGHT_NODEJS_PATH',
+    ];
+    const written = new Set<string>();
+    const lines: string[] = [];
+    for (const key of preferredOrder) {
+      if (Object.prototype.hasOwnProperty.call(nextEnv, key)) {
+        lines.push(formatEnvLine(key, nextEnv[key]));
+        written.add(key);
+      }
+    }
+    for (const key of Object.keys(nextEnv).sort()) {
+      if (!written.has(key)) {
+        lines.push(formatEnvLine(key, nextEnv[key]));
+      }
+    }
+    fs.writeFileSync(ENV_FILE, `${lines.join('\n')}\n`, 'utf8');
 
     await execFileAsync(
       process.platform === 'win32' ? 'npx.cmd' : 'npx',

@@ -89,18 +89,12 @@ async function checkPublicImageAccess(): Promise<InstallCheck> {
   const fileName = `install-public-image-check-${Date.now()}.png`;
   const uploadDir = getImageUploadDir();
   const imagePath = path.join(uploadDir, fileName);
+  let isHttps = false;
 
   try {
     const publicBaseUrl = normalizePublicBaseUrl(process.env.PUBLIC_BASE_URL || '');
     const parsedBaseUrl = new URL(publicBaseUrl);
-    if (parsedBaseUrl.protocol !== 'https:') {
-      return {
-        key: 'public-image-url',
-        label: '公网图片访问',
-        status: 'fail',
-        message: 'PUBLIC_BASE_URL 必须使用 HTTPS，Ozon 上架图片需要公网 HTTPS 地址',
-      };
-    }
+    isHttps = parsedBaseUrl.protocol === 'https:';
 
     fs.mkdirSync(uploadDir, { recursive: true });
     const onePixelPng = Buffer.from(
@@ -131,8 +125,10 @@ async function checkPublicImageAccess(): Promise<InstallCheck> {
     return {
       key: 'public-image-url',
       label: '公网图片访问',
-      status: 'pass',
-      message: `/uploads/images/ 可通过 PUBLIC_BASE_URL 访问`,
+      status: isHttps ? 'pass' : 'warn',
+      message: isHttps
+        ? `/uploads/images/ 可通过 PUBLIC_BASE_URL 访问`
+        : `/uploads/images/ 可通过 PUBLIC_BASE_URL 访问；当前为 HTTP/IP 部署，Ozon 上架图片后续需要域名 HTTPS`,
     };
   } catch (error: any) {
     return {
