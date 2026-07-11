@@ -5,6 +5,8 @@ description: Ozon跨境电商助手数据库设计文档
 
 # Ozon跨境电商助手 - 数据库设计
 
+> 历史设计稿，仅供参考。当前项目使用 MySQL + Prisma，实际结构以 `backend/prisma/schema.prisma` 和 [../DATABASE.md](../DATABASE.md) 为准。
+
 ---
 
 ## 📋 设计概述
@@ -25,7 +27,6 @@ ozon_crawler_db/
 ├── api_configs/            # API配置集合
 ├── products/               # 商品基础信息
 ├── warehouse_items/        # 本地仓库商品
-├── ozon_listings/          # Ozon上架记录
 ├── analytics_data/         # 选品分析数据
 ├── translation_cache/      # 翻译缓存
 └── system_logs/            # 系统日志
@@ -245,45 +246,7 @@ ozon_crawler_db/
 
 ---
 
-### 5. Ozon上架记录集合 (ozon_listings)
-
-**用途**：存储商品在Ozon平台的上架历史和状态
-
-```javascript
-// ozon_listings 集合示例文档
-{
-  _id: ObjectId("60d5ec4904a9a32f44726951"),
-  user_id: ObjectId("60d5ec4904a9a32f4472694d"),
-  warehouse_item_id: ObjectId("60d5ec4904a9a32f44726950"),
-  ozon_product_id: "prod_12345",
-  status: "active", // active, paused, archived, deleted
-  price_history: [
-    { price: 1499, effective_date: ISODate("2024-01-01T00:00:00Z") },
-    { price: 1399, effective_date: ISODate("2024-01-10T00:00:00Z") }
-  ],
-  stock_history: [
-    { quantity: 45, effective_date: ISODate("2024-01-01T00:00:00Z") },
-    { quantity: 35, effective_date: ISODate("2024-01-05T00:00:00Z") }
-  ],
-  sales_data: {
-    total_sold: 10,
-    revenue: 14990,
-    last_updated: ISODate("2024-01-01T00:00:00Z")
-  },
-  last_ozon_sync: ISODate("2024-01-01T00:00:00Z"),
-  created_at: ISODate("2024-01-01T00:00:00Z"),
-  updated_at: ISODate("2024-01-01T00:00:00Z")
-}
-```
-
-**索引建议**：
-- `{ user_id: 1, status: 1 }` - 查询活跃商品
-- `{ user_id: 1, ozon_product_id: 1 }`
-- `{ user_id: 1, last_ozon_sync: -1 }`
-
----
-
-### 6. 选品分析数据集合 (analytics_data)
+### 5. 选品分析数据集合 (analytics_data)
 
 **用途**：存储选品分析的结果和数据
 
@@ -404,15 +367,6 @@ Product 1 ←→ 1 WarehouseItem
 ```
 - 每个商品在仓库中最多有一个条目
 - 通过 `product_id` 字段关联
-
-### 本地仓库与Ozon上架
-```
-WarehouseItem 1 ←→ N OzonListing
-```
-- 一个仓库商品可以有多个上架记录（版本管理）
-- 查询时使用 `warehouse_item_id` 字段关联
-
----
 
 ## 📈 查询优化建议
 

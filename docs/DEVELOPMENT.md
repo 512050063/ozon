@@ -1,6 +1,6 @@
 # 开发指南
 
-> 基于 2026-06-18 实际项目代码规范提取
+> 基于 2026-07-11 实际项目代码规范提取
 
 ## 环境准备
 
@@ -26,7 +26,8 @@
 cd backend
 cp .env.example .env    # 填写 DATABASE_URL, JWT_SECRET 等
 npm install
-npx prisma migrate dev   # 首次：建表 + 种子数据
+npx prisma generate
+npx prisma migrate dev   # 新库开发环境：建表 + 应用迁移
 npm run dev              # → http://localhost:3000
 
 # 2. 前端（新终端）
@@ -34,6 +35,8 @@ cd frontend
 npm install
 npm run dev              # → http://localhost:5173
 ```
+
+已有本地库如果缺少完整 Prisma migration baseline，可临时使用 `npx prisma db push` 对齐 schema。涉及删表、改唯一索引、字段类型变更时，先备份数据库并确认没有运行时代码引用。
 
 ## 前端开发规范
 
@@ -81,7 +84,6 @@ Axios 实例配置 (`request.ts`)：
 
 - 全局认证状态：`store/authStore.ts` (Pinia)
 - 页面级数据：组件内 `ref/reactive`，不滥用全局 Store
-- 选品临时数据：`store/selectionStore.ts`
 
 ## 后端开发规范
 
@@ -99,6 +101,8 @@ Routes (路由)     → 参数校验、调用 Controller
 - 所有数据库操作在 Service 层完成，Controller 不直接操作 ORM
 - 复杂查询使用 `Prisma.$queryRaw`，简单查询使用链式 API
 - 字段更新优先使用 partial 对象解构避免遗漏
+- 表是否废弃以代码引用、业务职责和数据生命周期共同判断，不能只看是否为空
+- `wechat_login_sessions`、`ozon_push_events` 这类临时/事件表允许长期为空；删表前先检查 `schema.prisma`、`backend/src`、`frontend/src` 和当前文档
 
 ```typescript
 // ✅ 推荐

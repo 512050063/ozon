@@ -5,6 +5,8 @@ description: Ozon跨境电商助手MySQL数据库设计文档
 
 # Ozon跨境电商助手 - MySQL数据库设计
 
+> 历史设计稿，仅供参考。当前实际结构以 `backend/prisma/schema.prisma` 和 [../DATABASE.md](../DATABASE.md) 为准。
+
 ---
 
 ## 📋 设计概述
@@ -150,37 +152,7 @@ CREATE INDEX idx_warehouse_items_status ON warehouse_items(status);
 
 ---
 
-### 5. Ozon上架记录表 (ozon_listings)
-
-**用途**：存储Ozon上架记录
-
-```sql
-CREATE TABLE `ozon_listings` (
-  `id` INT PRIMARY KEY AUTO_INCREMENT,
-  `user_id` INT NOT NULL COMMENT '用户ID',
-  `warehouse_item_id` INT NOT NULL COMMENT '仓库商品ID',
-  `ozon_product_id` VARCHAR(50) NOT NULL COMMENT 'Ozon商品ID',
-  `status` ENUM('active', 'paused', 'archived', 'deleted') DEFAULT 'active' COMMENT '状态',
-  `price_history` JSON COMMENT '价格历史（JSON数组）',
-  `stock_history` JSON COMMENT '库存历史（JSON数组）',
-  `sales_data` JSON COMMENT '销售数据（JSON）',
-  `last_ozon_sync` DATETIME COMMENT '最后同步时间',
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`warehouse_item_id`) REFERENCES `warehouse_items`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Ozon上架记录表';
-
--- 索引
-CREATE INDEX idx_ozon_listings_user_id ON ozon_listings(user_id);
-CREATE INDEX idx_ozon_listings_status ON ozon_listings(status);
-CREATE INDEX idx_ozon_listings_warehouse_item_id ON ozon_listings(warehouse_item_id);
-CREATE INDEX idx_ozon_listings_last_sync ON ozon_listings(last_ozon_sync);
-```
-
----
-
-### 6. 选品分析数据表 (analytics_data)
+### 5. 选品分析数据表 (analytics_data)
 
 **用途**：存储选品分析数据
 
@@ -275,14 +247,6 @@ users (1) ←→ products (N)
 products (1) ←→ warehouse_items (1)
 ```
 - 每个商品在仓库中最多有一个条目
-
-### 本地仓库与Ozon上架
-```
-warehouse_items (1) ←→ ozon_listings (N)
-```
-- 一个仓库商品可以有多个上架记录（版本管理）
-
----
 
 ## 📈 查询优化建议
 

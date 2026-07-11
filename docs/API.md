@@ -1,6 +1,41 @@
 # API 接口参考
 
-> 基于 2026-06-18 实际路由定义提取，共 21 个路由模块
+> 基于 2026-07-11 `backend/src/app.ts` 和 `backend/src/routes/` 整理。当前后端共有 28 个路由模块；本文记录核心接口和模块入口，具体参数以对应 route/controller/service 为准。
+
+## 路由模块清单
+
+| 模块 | 挂载路径 | 说明 |
+|------|----------|------|
+| install | `/api/install` | 安装向导 |
+| auth | `/api/auth` | 登录、注册、会话、微信扫码 |
+| dashboard | `/api/dashboard` | 仪表盘汇总 |
+| pricing | `/api/pricing` | 定价策略 |
+| users | `/api/users` | 用户管理 |
+| api-configs | `/api/api-configs` | 平台 API 配置 |
+| roles | `/api/roles` | 角色权限 |
+| membership | `/api/membership` | 会员信息 |
+| payment-records | `/api/payment-records` | 支付记录 |
+| ozon/stores | `/api/ozon/stores` | 店铺和商品同步 |
+| ozon/push | `/api/ozon/push` | Ozon 推送回调 |
+| ozon/categories | `/api/ozon/categories` | Ozon 类目和属性 |
+| images | `/api/images` | 图片素材 |
+| product-selection | `/api/product-selection` | 选品收藏 |
+| alibaba | `/api/alibaba` | 1688 授权、搜索和详情 |
+| ozon/crawler | `/api/ozon/crawler` | Ozon 页面搜索 |
+| ozon/cookie | `/api/ozon/cookie` | Ozon Cookie 获取/导入 |
+| ozon/search | `/api/ozon/search` | Ozon 搜索 |
+| ozon/messages | `/api/ozon/messages` | Ozon 消息 |
+| ozon/orders | `/api/ozon/orders` | Ozon 订单 |
+| ozon/finance | `/api/ozon/finance` | 财务流水 |
+| ozon/promotions | `/api/ozon/promotions` | 促销活动 |
+| ozon/type | `/api/ozon/type` | 商品类型提取 |
+| ozon/preference | `/api/ozon/preference` | Ozon 偏好配置和缓存 |
+| auto-reply | `/api/auto-reply` | 自动回复 |
+| product-supply | `/api/product-supply` | 上架商品与货源绑定 |
+| supply-sources | `/api/supply-sources` | 货源管理 |
+| translations | `/api/translations` | 翻译解析 |
+
+旧 `/api/collection` 采集库接口已废弃并移除，1688 货源相关数据改由 `product-supply` / `supply-sources` 承接。
 
 ## 认证模块 `/api/auth`
 
@@ -128,17 +163,6 @@
 
 ---
 
-## 采集库 `/api/collection`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | / | 采集列表 |
-| GET | /:id | 采集详情 |
-| POST | / | 新增采集 |
-| PUT | /:id | 更新采集 |
-| DELETE | /:id | 删除采集 |
-| POST | /:id/move | 移入商品库 |
-
 ## 选品管理 `/api/product-selection`
 
 | 方法 | 路径 | 说明 |
@@ -154,10 +178,17 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | / | 供应列表 |
+| GET | /templates | 上架模板 |
+| GET | /sources | 可绑定货源 |
+| POST | /source/preview-url | 货源 URL 预览 |
 | GET | /:id | 详情 |
 | POST | / | 新增 |
+| POST | /:id/listing-preview | 上架预览 |
 | POST | /:id/list-to-ozon | 上架到 Ozon |
 | GET | /:id/listing-status | 上架状态 |
+| PUT | /:id/source | 更新绑定货源 |
+| POST | /:id/source/from-url | 从 URL 导入并绑定货源 |
+| DELETE | /:id/source | 解绑货源 |
 | PUT | /:id | 更新 |
 | DELETE | /:id | 删除 |
 
@@ -187,13 +218,57 @@
 |------|------|------|
 | GET | / | 图片列表 |
 | GET | /stats | 图片统计 |
-| POST /upload | 上传图片 |
+| POST | /upload | 上传图片 |
 | DELETE | /:id | 删除图片 |
-| DELETE /batch | 批量删除 |
+| DELETE | /batch | 批量删除 |
 | GET | /:id/usage | 使用检查 |
 | POST | /batch/usage | 批量使用检查 |
 
 ---
+
+## 仪表盘 `/api/dashboard`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /summary | 仪表盘汇总 |
+
+## Ozon 财务 `/api/ozon/finance`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /:storeId/totals | 财务汇总 |
+| GET | /:storeId/postings | 财务明细 |
+| POST | /:storeId/sync | 同步财务 |
+| GET | /:storeId/sync-status | 同步状态 |
+| GET | /:storeId/sync-logs | 同步日志 |
+
+## Ozon 促销 `/api/ozon/promotions`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /:storeId | 活动列表 |
+| GET | /:storeId/sync-logs | 同步日志 |
+| GET | /:storeId/:actionId/products | 活动商品 |
+| GET | /:storeId/:actionId/candidates | 可添加商品 |
+| POST | /:storeId/:actionId/products | 添加活动商品 |
+| DELETE | /:storeId/:actionId/products/:productId | 移除活动商品 |
+
+## 货源管理 `/api/supply-sources`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | / | 货源列表 |
+| POST | / | 新增货源 |
+| POST | /preview-url | URL 预览 |
+| POST | /from-url | 从 URL 导入 |
+| PUT | /:id | 更新货源 |
+| DELETE | /:id | 删除货源 |
+
+## 翻译 `/api/translations`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /product-names/resolve | 商品名称翻译解析 |
 
 ## 系统管理
 
@@ -236,4 +311,4 @@ GET /api/health — 无需认证
 { "code": 401, "message": "未授权" }
 ```
 
-**注意**: 所有 `/api/*` 路由（除 auth、health、alibaba/auth/token 外）均需要 JWT Bearer Token。
+**注意**: 所有 `/api/*` 路由默认需要 JWT Bearer Token。当前全局白名单为 `/api/auth/*`、`/api/health`、`/api/install/*`、`/api/ozon/push/*`，以及 `GET /api/alibaba/auth/token`。

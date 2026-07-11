@@ -5,6 +5,8 @@ description: Ozon跨境电商助手实现总结文档
 
 # Ozon跨境电商助手 - 技术实现总结
 
+> 历史技术总结，仅供参考。当前代码结构、路由数量和数据库结构以 [../ARCHITECTURE.md](../ARCHITECTURE.md)、[../API.md](../API.md)、[../DATABASE.md](../DATABASE.md) 为准。
+
 ---
 
 ## 📋 项目概述
@@ -88,10 +90,9 @@ description: Ozon跨境电商助手实现总结文档
 - 用户表：存储用户信息和权限
 - API配置表：管理各个平台的API凭证
 
-### 2. 商品数据 (products, warehouse_items, ozon_listings)
+### 2. 商品数据 (products, warehouse_items)
 - 商品表：Ozon商品信息
 - 本地仓库表：商品入库和管理
-- 上架记录表：Ozon店铺商品管理
 
 ### 3. 分析和任务 (analysis_tasks, analysis_results)
 - 分析任务表：异步选品任务管理
