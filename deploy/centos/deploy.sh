@@ -25,7 +25,9 @@ enable_build_toolchain() {
     # CentOS 7 default gcc is too old for native Node modules like bcrypt.
     # Prefer devtoolset-10 when available and fall back to devtoolset-8.
     # shellcheck disable=SC1091
+    set +u
     . /opt/rh/devtoolset-10/enable
+    set -u
     export LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib/gcc/x86_64-redhat-linux/10:${LD_LIBRARY_PATH:-}"
     log "enabled build toolchain: devtoolset-10"
     return 0
@@ -33,7 +35,9 @@ enable_build_toolchain() {
 
   if [ -f /opt/rh/devtoolset-8/enable ]; then
     # shellcheck disable=SC1091
+    set +u
     . /opt/rh/devtoolset-8/enable
+    set -u
     export LD_LIBRARY_PATH="/opt/rh/devtoolset-8/root/usr/lib/gcc/x86_64-redhat-linux/8:${LD_LIBRARY_PATH:-}"
     log "enabled build toolchain: devtoolset-8"
     return 0
