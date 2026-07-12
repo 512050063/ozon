@@ -275,109 +275,127 @@
                 </div>
               </template>
               <div class="api-config-tab-panel px-8 py-6">
-                <div class="mb-5 px-4 py-3 bg-blue-50 rounded-lg">
-                  <p class="text-xs text-blue-700 leading-5 text-left">
-                    <strong>配置说明：</strong>管理 Ozon 本机采集器、类目数据同步与搜索缓存等核心功能
-                  </p>
-                </div>
-                <div class="ozon-config-wrap mx-auto max-w-5xl">
-                  <div class="ozon-config-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="ozon-config-header px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-white to-emerald-50/60">
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                          <div class="ozon-config-icon w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div class="text-left">
-                            <h3 class="text-base font-bold text-slate-900">Ozon配置</h3>
-                            <p class="text-xs text-slate-500 mt-1">本机采集器、类目数据同步及搜索缓存设置</p>
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                          <!-- 设置按钮（图标形式） -->
-                          <button
-                            @click="openOzonSettings"
-                            class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center justify-center"
-                            title="搜索与缓存设置"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </button>
-                          <!-- 类目更新按钮（使用AppUpdateButton组件） -->
-                          <AppUpdateButton text="类目更新" :loading="isSyncingCategories" :last-update-time="lastUpdateTime"
-                            :update-status="updateStatus === '更新成功' ? 'success' : updateStatus === '更新失败' ? 'error' : 'idle'"
-                            :fetch-last-update-time="fetchLastUpdateTime" :module="OZON_PREFERENCE_MODULE" @click="handleUpdateClick"
-                            @detail="handleDetailClick" />
-                        </div>
+                <div class="ozon-control-panel">
+                  <div class="ozon-control-header">
+                    <div class="flex items-center gap-4 min-w-0">
+                      <div class="ozon-control-icon">
+                        <Connection class="w-5 h-5" />
+                      </div>
+                      <div class="text-left min-w-0">
+                        <h3 class="text-base font-bold text-slate-900">Ozon 平台配置</h3>
+                        <p class="text-xs text-slate-500 mt-1">本机采集器、类目数据同步与搜索缓存</p>
                       </div>
                     </div>
-                    <div class="ozon-config-body px-10 py-8">
-                      <div class="ozon-worker-card rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
-                        <div class="flex items-center justify-between gap-4">
-                          <div class="flex items-center gap-3 text-left">
-                            <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                              <Connection class="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div class="text-sm font-semibold text-slate-800">本机采集器</div>
-                              <div class="text-xs text-slate-500 mt-0.5">
-                                在本机运行 worker，用本机 Chrome 执行 Ozon 搜索、链接解析和类型提取
-                              </div>
-                            </div>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <button
-                              class="api-config-button api-config-button--secondary"
-                              :disabled="isLoadingWorkers"
-                              @click="loadOzonWorkers"
-                            >
-                              刷新状态
-                            </button>
-                            <button
-                              class="api-config-button api-config-button--primary"
-                              :disabled="isCreatingWorker"
-                              @click="createOzonWorker"
-                            >
-                              {{ isCreatingWorker ? '生成中...' : '生成令牌' }}
-                            </button>
-                          </div>
+                    <div class="flex items-center gap-3">
+                      <button
+                        @click="openOzonSettings"
+                        class="api-config-button api-config-button--secondary"
+                        title="搜索与缓存设置"
+                      >
+                        搜索缓存设置
+                      </button>
+                      <AppUpdateButton text="类目更新" :loading="isSyncingCategories" :last-update-time="lastUpdateTime"
+                        :update-status="updateStatus === '更新成功' ? 'success' : updateStatus === '更新失败' ? 'error' : 'idle'"
+                        :fetch-last-update-time="fetchLastUpdateTime" :module="OZON_PREFERENCE_MODULE" @click="handleUpdateClick"
+                        @detail="handleDetailClick" />
+                    </div>
+                  </div>
+
+                  <div class="ozon-assistant-grid">
+                    <div class="ozon-assistant-section">
+                      <div class="section-kicker">运行状态</div>
+                      <div class="assistant-status-line">
+                        <span class="assistant-dot" :class="localAssistantOnline ? 'is-online' : 'is-offline'"></span>
+                        <span class="font-semibold text-slate-800">{{ localAssistantOnline ? '本机助手已连接' : '未检测到本机助手' }}</span>
+                      </div>
+                      <p class="section-desc">
+                        {{ localAssistantOnline
+                          ? (localWorkerStatus?.running ? `采集器运行中，PID ${localWorkerStatus.pid || '-'}` : '本机助手在线，采集器尚未启动')
+                          : '先在本机启动轻量助手，云端页面才能自动写入配置并启动采集器。' }}
+                      </p>
+                      <div class="assistant-command" v-if="!localAssistantOnline">
+                        py worker/ozon-assistant.py --host 127.0.0.1 --port 17666
+                      </div>
+                    </div>
+
+                    <div class="ozon-assistant-section">
+                      <div class="section-kicker">环境检测</div>
+                      <div class="env-check-list" v-if="localAssistantEnv">
+                        <div v-for="item in assistantEnvItems" :key="item.key" class="env-check-row">
+                          <span class="assistant-dot" :class="item.ok ? 'is-online' : 'is-offline'"></span>
+                          <span class="font-medium text-slate-700">{{ item.label }}</span>
+                          <span class="text-slate-400 truncate">{{ item.value || item.hint }}</span>
                         </div>
-                        <div class="mt-4 grid grid-cols-1 gap-2">
-                          <div v-if="isLoadingWorkers" class="text-xs text-slate-400 text-left">正在获取采集器状态...</div>
-                          <div v-else-if="ozonWorkers.length === 0" class="text-xs text-slate-500 text-left">
-                            暂无采集器，生成令牌后在本机运行 worker 即可上线。
-                          </div>
-                          <div
-                            v-for="worker in ozonWorkers"
-                            :key="worker.id"
-                            class="flex items-center justify-between rounded-lg border border-white bg-white px-3 py-2 text-xs"
+                      </div>
+                      <p v-else class="section-desc">检测 Python、Chrome、项目路径和 worker 配置状态。</p>
+                      <button
+                        class="api-config-button api-config-button--secondary mt-3"
+                        :disabled="isCheckingLocalAssistant"
+                        @click="checkLocalAssistant"
+                      >
+                        {{ isCheckingLocalAssistant ? '检测中...' : '检测本机环境' }}
+                      </button>
+                    </div>
+
+                    <div class="ozon-assistant-section">
+                      <div class="section-kicker">启动采集器</div>
+                      <p class="section-desc">
+                        点击生成令牌后，如果本机助手在线，会自动写入配置并启动 worker；否则弹出配置和启动命令供手动运行。
+                      </p>
+                      <div class="flex items-center gap-2 mt-4">
+                        <button
+                          class="api-config-button api-config-button--secondary"
+                          :disabled="isLoadingWorkers"
+                          @click="loadOzonWorkers"
+                        >
+                          刷新状态
+                        </button>
+                        <button
+                          class="api-config-button api-config-button--primary"
+                          :disabled="isCreatingWorker || isStartingLocalWorker"
+                          @click="createOzonWorker"
+                        >
+                          {{ isCreatingWorker || isStartingLocalWorker ? '处理中...' : '生成令牌' }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="worker-record-panel">
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="text-sm font-semibold text-slate-800">采集器记录</div>
+                      <div class="text-xs text-slate-400">只保留正在使用的采集器，多余离线记录可删除。</div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                      <div v-if="isLoadingWorkers" class="text-xs text-slate-400 text-left">正在获取采集器状态...</div>
+                      <div v-else-if="ozonWorkers.length === 0" class="worker-empty-row">
+                        暂无采集器，启动本机助手后点击“生成令牌”即可上线。
+                      </div>
+                      <div
+                        v-for="worker in ozonWorkers"
+                        :key="worker.id"
+                        class="worker-record-row"
+                      >
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span
+                            class="assistant-dot"
+                            :class="worker.status === 'online' ? 'is-online' : worker.status === 'disabled' ? 'is-disabled' : 'is-offline'"
+                          ></span>
+                          <span class="font-medium text-slate-700 truncate">{{ worker.name }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-slate-500 flex-shrink-0">
+                          <span>
+                            {{ worker.status === 'online' ? '在线' : worker.status === 'disabled' ? '已禁用' : '离线' }}
+                            <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
+                          </span>
+                          <button
+                            class="worker-delete-btn"
+                            :disabled="deletingWorkerId === worker.id"
+                            title="删除采集器"
+                            @click="deleteOzonWorker(worker)"
                           >
-                            <div class="flex items-center gap-2 min-w-0">
-                              <span
-                                class="w-2 h-2 rounded-full"
-                                :class="worker.status === 'online' ? 'bg-emerald-500' : worker.status === 'disabled' ? 'bg-slate-400' : 'bg-amber-400'"
-                              ></span>
-                              <span class="font-medium text-slate-700 truncate">{{ worker.name }}</span>
-                            </div>
-                            <div class="flex items-center gap-3 text-slate-500 flex-shrink-0">
-                              <span>
-                                {{ worker.status === 'online' ? '在线' : worker.status === 'disabled' ? '已禁用' : '离线' }}
-                                <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
-                              </span>
-                              <button
-                                class="worker-delete-btn"
-                                :disabled="deletingWorkerId === worker.id"
-                                title="删除采集器"
-                                @click="deleteOzonWorker(worker)"
-                              >
-                                <Delete class="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
+                            <Delete class="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -468,8 +486,12 @@
           <pre class="worker-token-code">{{ workerConfigSnippet }}</pre>
         </div>
         <div>
+          <div class="text-xs font-semibold text-slate-600 text-left mb-2">先启动本机助手</div>
+          <pre class="worker-token-code">{{ getManualAssistantCommand() }}</pre>
+        </div>
+        <div>
           <div class="text-xs font-semibold text-slate-600 text-left mb-2">启动命令</div>
-          <pre class="worker-token-code">py worker/ozon-worker.py --config worker/worker.config.json --loop</pre>
+          <pre class="worker-token-code">{{ getManualWorkerCommand() }}</pre>
         </div>
         <button class="api-config-button api-config-button--secondary w-full justify-center" @click="copyWorkerConfig">
           复制配置
@@ -493,6 +515,7 @@ import { apiConfigAPI } from '@/api/apiConfigAPI';
 import { ozonPreferenceAPI } from '@/api/ozonPreferenceAPI';
 import { alibabaAPI } from '@/api/alibabaAPI';
 import { ozonWorkerAPI, type OzonBrowserWorker } from '@/api/ozonWorkerAPI';
+import { ozonLocalAssistantAPI, type LocalAssistantEnv, type LocalAssistantWorkerStatus, type LocalWorkerConfig } from '@/api/ozonLocalAssistantAPI';
 import ApiConfigPanel from './components/ApiConfigPanel.vue';
 import AppUpdateButton from '@/components/ui/AppUpdateButton.vue';
 import AppDetailDialog from '@/components/ui/AppDetailDialog.vue';
@@ -571,6 +594,11 @@ const testingConnection = ref<string | null>(null);
 const isSaving = ref(false);
 const isLoadingWorkers = ref(false);
 const isCreatingWorker = ref(false);
+const isCheckingLocalAssistant = ref(false);
+const isStartingLocalWorker = ref(false);
+const localAssistantOnline = ref(false);
+const localAssistantEnv = ref<LocalAssistantEnv | null>(null);
+const localWorkerStatus = ref<LocalAssistantWorkerStatus | null>(null);
 const deletingWorkerId = ref<number | null>(null);
 const ozonWorkers = ref<OzonBrowserWorker[]>([]);
 const showWorkerTokenDialog = ref(false);
@@ -594,6 +622,22 @@ const cacheInfo = reactive({
   size: 0,
   fileCount: 0,
   formattedSize: '0 B',
+});
+
+const assistantEnvLabels: Record<string, string> = {
+  python: 'Python',
+  chrome: 'Chrome',
+  repoRoot: '项目路径',
+  workerConfig: '采集器配置',
+};
+
+const assistantEnvItems = computed(() => {
+  if (!localAssistantEnv.value) return [];
+  return Object.entries(localAssistantEnv.value).map(([key, item]) => ({
+    key,
+    label: assistantEnvLabels[key] || key,
+    ...item,
+  }));
 });
 
 // 类目更新相关状态
@@ -757,16 +801,72 @@ const loadConfigs = async (showError = true): Promise<boolean> => {
   }
 };
 
-const buildWorkerConfigSnippet = (token: string) => {
-  const apiBaseUrl = window.location.origin;
-  return JSON.stringify({
-    apiBaseUrl,
+const buildWorkerConfig = (token: string): LocalWorkerConfig => {
+  return {
+    apiBaseUrl: window.location.origin,
     workerToken: token,
-    repoRoot: 'D:/project/ozon',
+    repoRoot: localAssistantEnv.value?.repoRoot?.value || '',
     pythonPath: 'py',
     pollIntervalSeconds: 5,
     scriptTimeoutSeconds: 600,
-  }, null, 2);
+  };
+};
+
+const buildWorkerConfigSnippet = (config: LocalWorkerConfig) => {
+  return JSON.stringify(config, null, 2);
+};
+
+const checkLocalAssistant = async (showToast = true) => {
+  isCheckingLocalAssistant.value = true;
+  try {
+    await ozonLocalAssistantAPI.getHealth();
+    const [env, workerStatus] = await Promise.all([
+      ozonLocalAssistantAPI.checkEnv(),
+      ozonLocalAssistantAPI.getWorkerStatus(),
+    ]);
+    localAssistantOnline.value = true;
+    localAssistantEnv.value = env;
+    localWorkerStatus.value = workerStatus;
+    if (showToast) {
+      ElMessage.success('本机助手已连接');
+    }
+    return true;
+  } catch {
+    localAssistantOnline.value = false;
+    localAssistantEnv.value = null;
+    localWorkerStatus.value = null;
+    if (showToast) {
+      ElMessage.warning('未检测到本机助手，请先在本机启动助手');
+    }
+    return false;
+  } finally {
+    isCheckingLocalAssistant.value = false;
+  }
+};
+
+const startLocalWorker = async (config: LocalWorkerConfig) => {
+  isStartingLocalWorker.value = true;
+  try {
+    const result = await ozonLocalAssistantAPI.startWorker(config);
+    localAssistantOnline.value = true;
+    localWorkerStatus.value = result;
+    await Promise.allSettled([loadOzonWorkers(), checkLocalAssistant(false)]);
+    ElMessage.success(result.running ? '本机采集器已启动' : '采集器配置已写入');
+    return true;
+  } catch (error: any) {
+    ElMessage.warning(error.message || '本机助手不可用，请按弹窗手动运行');
+    return false;
+  } finally {
+    isStartingLocalWorker.value = false;
+  }
+};
+
+const getManualAssistantCommand = () => {
+  return 'py worker/ozon-assistant.py --host 127.0.0.1 --port 17666';
+};
+
+const getManualWorkerCommand = () => {
+  return 'py worker/ozon-worker.py --config worker/worker.config.json --loop';
 };
 
 const loadOzonWorkers = async () => {
@@ -793,10 +893,17 @@ const createOzonWorker = async () => {
       ElMessage.error(response.message || '采集器令牌生成失败');
       return;
     }
-    workerConfigSnippet.value = buildWorkerConfigSnippet(response.data.token);
-    showWorkerTokenDialog.value = true;
+    const config = buildWorkerConfig(response.data.token);
+    workerConfigSnippet.value = buildWorkerConfigSnippet(config);
+    const started = localAssistantOnline.value
+      ? await startLocalWorker(config)
+      : await checkLocalAssistant(false).then(online => online ? startLocalWorker(config) : false);
+    if (!started) {
+      await tryCopyWorkerConfigSilently();
+      showWorkerTokenDialog.value = true;
+      ElMessage.success('采集器令牌已生成，请按弹窗手动启动');
+    }
     await loadOzonWorkers();
-    ElMessage.success('采集器令牌已生成');
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || error.message || '采集器令牌生成失败');
   } finally {
@@ -839,6 +946,15 @@ const copyWorkerConfig = async () => {
     ElMessage.success('配置已复制');
   } catch {
     ElMessage.warning('复制失败，请手动复制配置内容');
+  }
+};
+
+const tryCopyWorkerConfigSilently = async () => {
+  try {
+    await navigator.clipboard.writeText(workerConfigSnippet.value);
+    return true;
+  } catch {
+    return false;
   }
 };
 
@@ -1201,6 +1317,7 @@ onMounted(() => {
 
   loadConfigs();
   loadOzonWorkers();
+  void checkLocalAssistant(false);
 });
 
 onUnmounted(() => {});
@@ -1287,28 +1404,155 @@ onUnmounted(() => {});
   padding-bottom: 16px !important;
 }
 
-.ozon-config-wrap {
-  max-width: 960px;
+.ozon-control-panel {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
 }
 
-.ozon-config-header {
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
+.ozon-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #edf2f7;
+  background: linear-gradient(90deg, #ffffff 0%, #f8fbff 55%, #f7fdf9 100%);
 }
 
-.ozon-config-icon {
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 12px !important;
+.ozon-control-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #2563eb;
+  background: #eaf2ff;
+  flex-shrink: 0;
 }
 
-.ozon-config-icon svg {
-  width: 22px !important;
-  height: 22px !important;
+.ozon-assistant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 22px;
 }
 
-.ozon-config-body {
-  padding: 22px 34px 20px !important;
+.ozon-assistant-section,
+.worker-record-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 16px;
+  text-align: left;
+}
+
+.section-kicker {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 20px;
+  margin: 8px 0 0;
+}
+
+.assistant-status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.assistant-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+
+.assistant-dot.is-online {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.assistant-dot.is-offline {
+  background: #f59e0b;
+}
+
+.assistant-dot.is-disabled {
+  background: #94a3b8;
+}
+
+.assistant-command {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 18px;
+  word-break: break-all;
+}
+
+.env-check-list {
+  display: grid;
+  gap: 7px;
+}
+
+.env-check-row {
+  display: grid;
+  grid-template-columns: 10px 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.worker-record-panel {
+  margin: 0 22px 22px;
+}
+
+.worker-record-row,
+.worker-empty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  padding: 8px 11px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.worker-empty-row {
+  justify-content: center;
+  color: #94a3b8;
+}
+
+@media (max-width: 1100px) {
+  .ozon-assistant-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ozon-control-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .alibaba-config-form {
