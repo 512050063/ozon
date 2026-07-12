@@ -351,6 +351,60 @@
                           </div>
                         </div>
                       </div>
+                      <div class="ozon-worker-card mt-6 rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
+                        <div class="flex items-center justify-between gap-4">
+                          <div class="flex items-center gap-3 text-left">
+                            <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                              <Connection class="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div class="text-sm font-semibold text-slate-800">本机采集器</div>
+                              <div class="text-xs text-slate-500 mt-0.5">
+                                用本机 Chrome 执行 Ozon 前台搜索、链接解析和类型提取
+                              </div>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <button
+                              class="api-config-button api-config-button--secondary"
+                              :disabled="isLoadingWorkers"
+                              @click="loadOzonWorkers"
+                            >
+                              刷新状态
+                            </button>
+                            <button
+                              class="api-config-button api-config-button--primary"
+                              :disabled="isCreatingWorker"
+                              @click="createOzonWorker"
+                            >
+                              {{ isCreatingWorker ? '生成中...' : '生成令牌' }}
+                            </button>
+                          </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 gap-2">
+                          <div v-if="isLoadingWorkers" class="text-xs text-slate-400 text-left">正在获取采集器状态...</div>
+                          <div v-else-if="ozonWorkers.length === 0" class="text-xs text-slate-500 text-left">
+                            暂无采集器，生成令牌后在本机运行 worker 即可上线。
+                          </div>
+                          <div
+                            v-for="worker in ozonWorkers"
+                            :key="worker.id"
+                            class="flex items-center justify-between rounded-lg border border-white bg-white px-3 py-2 text-xs"
+                          >
+                            <div class="flex items-center gap-2 min-w-0">
+                              <span
+                                class="w-2 h-2 rounded-full"
+                                :class="worker.status === 'online' ? 'bg-emerald-500' : worker.status === 'disabled' ? 'bg-slate-400' : 'bg-amber-400'"
+                              ></span>
+                              <span class="font-medium text-slate-700 truncate">{{ worker.name }}</span>
+                            </div>
+                            <div class="text-slate-500">
+                              {{ worker.status === 'online' ? '在线' : worker.status === 'disabled' ? '已禁用' : '离线' }}
+                              <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <!-- 提示 + 按钮 -->
                       <div class="ozon-action-area text-center py-4">
                         <p class="text-xs text-slate-500 mb-4">
@@ -478,6 +532,27 @@
         </div>
       </div>
     </AppDialog>
+    <AppDialog
+      v-model="showWorkerTokenDialog"
+      title="本机采集器令牌"
+      subtitle="令牌只显示一次，请保存到本机 worker 配置文件"
+      :icon="Key"
+      confirm-text="我已保存"
+      @confirm="showWorkerTokenDialog = false"
+    >
+      <div class="space-y-4">
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 text-left">
+          这个令牌可以领取你的 Ozon 前台采集任务，不会再次展示。不要发给其他人。
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-slate-600 text-left mb-2">worker.config.json</div>
+          <pre class="worker-token-code">{{ workerConfigSnippet }}</pre>
+        </div>
+        <button class="api-config-button api-config-button--secondary w-full justify-center" @click="copyWorkerConfig">
+          复制配置
+        </button>
+      </div>
+    </AppDialog>
     <!-- 文件上传隐藏input -->
     <input ref="cookieFileInput" type="file" accept=".json" class="hidden" @change="handleCookieFileSelect" />
   </MainLayout>
@@ -496,6 +571,7 @@ import { Connection, Key, Link, Lock, Tickets, User } from '@element-plus/icons-
 import { apiConfigAPI } from '@/api/apiConfigAPI';
 import { ozonPreferenceAPI } from '@/api/ozonPreferenceAPI';
 import { alibabaAPI } from '@/api/alibabaAPI';
+import { ozonWorkerAPI, type OzonBrowserWorker } from '@/api/ozonWorkerAPI';
 import ApiConfigPanel from './components/ApiConfigPanel.vue';
 import AppUpdateButton from '@/components/ui/AppUpdateButton.vue';
 import AppDetailDialog from '@/components/ui/AppDetailDialog.vue';
@@ -574,7 +650,12 @@ const isSaving = ref(false);
 const isFetchingCookie = ref(false);
 const isImportingCookie = ref(false);
 const isLoadingOzonConfig = ref(false);
+const isLoadingWorkers = ref(false);
+const isCreatingWorker = ref(false);
 const ozonCookieData = ref<any>(null);
+const ozonWorkers = ref<OzonBrowserWorker[]>([]);
+const showWorkerTokenDialog = ref(false);
+const workerConfigSnippet = ref('');
 const ozonConfig = ref<any>(null);
 const cookieFileInput = ref<HTMLInputElement | null>(null);
 const showCookieDetailModal = ref(false);
@@ -760,6 +841,62 @@ const loadConfigs = async (showError = true): Promise<boolean> => {
   }
 };
 
+const buildWorkerConfigSnippet = (token: string) => {
+  const apiBaseUrl = window.location.origin;
+  return JSON.stringify({
+    apiBaseUrl,
+    workerToken: token,
+    repoRoot: 'D:/project/ozon',
+    pythonPath: 'py',
+    pollIntervalSeconds: 5,
+    scriptTimeoutSeconds: 600,
+  }, null, 2);
+};
+
+const loadOzonWorkers = async () => {
+  isLoadingWorkers.value = true;
+  try {
+    const response = await ozonWorkerAPI.listWorkers();
+    if (response.success) {
+      ozonWorkers.value = response.data || [];
+    } else {
+      ElMessage.error(response.message || '采集器状态获取失败');
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || error.message || '采集器状态获取失败');
+  } finally {
+    isLoadingWorkers.value = false;
+  }
+};
+
+const createOzonWorker = async () => {
+  isCreatingWorker.value = true;
+  try {
+    const response = await ozonWorkerAPI.createWorker(`本机采集器 ${new Date().toLocaleString()}`);
+    if (!response.success || !response.data?.token) {
+      ElMessage.error(response.message || '采集器令牌生成失败');
+      return;
+    }
+    workerConfigSnippet.value = buildWorkerConfigSnippet(response.data.token);
+    showWorkerTokenDialog.value = true;
+    await loadOzonWorkers();
+    ElMessage.success('采集器令牌已生成');
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || error.message || '采集器令牌生成失败');
+  } finally {
+    isCreatingWorker.value = false;
+  }
+};
+
+const copyWorkerConfig = async () => {
+  try {
+    await navigator.clipboard.writeText(workerConfigSnippet.value);
+    ElMessage.success('配置已复制');
+  } catch {
+    ElMessage.warning('复制失败，请手动复制配置内容');
+  }
+};
+
 const fetchOzonCookie = async () => {
   isFetchingCookie.value = true;
   try {
@@ -830,6 +967,7 @@ const refreshApiConfigPageData = async () => {
     loadConfigs(false),
     loadOzonCookie(),
     loadOzonConfig(),
+    loadOzonWorkers(),
     showDetailDialog.value ? fetchLogs() : Promise.resolve(),
   ]);
 };
@@ -1194,6 +1332,7 @@ onMounted(() => {
   loadConfigs();
   loadOzonCookie();
   loadOzonConfig();
+  loadOzonWorkers();
 });
 
 onUnmounted(() => {});
@@ -1474,5 +1613,20 @@ onUnmounted(() => {});
 
 .ozon-preference-dialog :deep(.el-slider__runway) {
   margin: 7px 0;
+}
+
+.worker-token-code {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #0f172a;
+  color: #dbeafe;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
 }
 </style>
