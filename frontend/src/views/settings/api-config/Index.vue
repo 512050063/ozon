@@ -277,7 +277,7 @@
               <div class="api-config-tab-panel px-8 py-6">
                 <div class="mb-5 px-4 py-3 bg-blue-50 rounded-lg">
                   <p class="text-xs text-blue-700 leading-5 text-left">
-                    <strong>配置说明：</strong>管理 Ozon 店铺 Cookie 及基础功能设置，包括商品中文显示、人民币价格转换、类目数据同步等核心功能
+                    <strong>配置说明：</strong>管理 Ozon 本机采集器、类目数据同步与搜索缓存等核心功能
                   </p>
                 </div>
                 <div class="ozon-config-wrap mx-auto max-w-5xl">
@@ -292,7 +292,7 @@
                           </div>
                           <div class="text-left">
                             <h3 class="text-base font-bold text-slate-900">Ozon配置</h3>
-                            <p class="text-xs text-slate-500 mt-1">Cookie管理、类目数据同步及搜索缓存设置</p>
+                            <p class="text-xs text-slate-500 mt-1">本机采集器、类目数据同步及搜索缓存设置</p>
                           </div>
                         </div>
                         <div class="flex items-center gap-3">
@@ -315,62 +315,8 @@
                         </div>
                       </div>
                     </div>
-                    <!-- Cookie 状态区 -->
                     <div class="ozon-config-body px-10 py-8">
-                      <!-- Cookie 信息展示（四栏网格） -->
-                      <div class="ozon-stats-block mb-6">
-                        <div class="grid grid-cols-4 gap-3">
-                          <div class="ozon-status-card bg-gradient-to-br from-slate-50 to-white rounded-xl px-4 py-4 border border-slate-100 hover:shadow-sm transition-shadow">
-                            <div class="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">状态</div>
-                            <div v-if="isLoadingOzonConfig" class="text-sm font-medium text-slate-400">加载中...</div>
-                            <div v-else class="inline-flex items-center gap-1.5 text-sm font-semibold"
-                              :class="ozonConfig?.cookieStatus?.valid ? 'text-emerald-600' : ozonConfig?.cookieStatus ? 'text-red-500' : 'text-slate-500'">
-                              <div class="w-4 h-4 rounded-full flex items-center justify-center"
-                                :class="ozonConfig?.cookieStatus?.valid ? 'bg-emerald-100' : ozonConfig?.cookieStatus ? 'bg-red-100' : 'bg-slate-100'">
-                                <svg v-if="ozonConfig?.cookieStatus?.valid" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                                </svg>
-                                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </div>
-                              <span>{{ ozonConfig?.cookieStatus ? (ozonConfig.cookieStatus.valid ? '已配置' : '可能失效') : '未配置' }}</span>
-                            </div>
-                          </div>
-                          <div class="ozon-status-card bg-gradient-to-br from-slate-50 to-white rounded-xl px-4 py-4 border border-slate-100 hover:shadow-sm transition-shadow">
-                            <div class="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">获取时间</div>
-                            <div class="text-sm font-medium text-slate-700">{{ isLoadingOzonConfig ? '加载中...' : (ozonConfig?.cookieStatus?.exported_at ? formatDate(new Date(ozonConfig.cookieStatus.exported_at)) : '-') }}</div>
-                          </div>
-                          <div class="ozon-status-card bg-gradient-to-br from-slate-50 to-white rounded-xl px-4 py-4 border border-slate-100 hover:shadow-sm transition-shadow">
-                            <div class="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">语言设置</div>
-                            <div class="text-sm font-medium text-slate-700">{{ isLoadingOzonConfig ? '加载中...' : (ozonConfig?.cookieStatus?.lang || '-') }}</div>
-                          </div>
-                          <div class="ozon-status-card bg-gradient-to-br from-slate-50 to-white rounded-xl px-4 py-4 border border-slate-100 hover:shadow-sm transition-shadow">
-                            <div class="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">货币设置</div>
-                            <div class="text-sm font-medium text-slate-700">{{ isLoadingOzonConfig ? '加载中...' : (ozonConfig?.cookieStatus?.currency || '-') }}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="ozon-cookie-note mb-6 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3">
-                        <div class="flex items-center justify-between gap-4">
-                          <p class="text-xs text-blue-700 leading-5 text-left">
-                            获取 Cookie 仍用于刷新中文和人民币环境状态；云端部署后的 Ozon 搜索、链接解析和类型提取由本机采集器执行。
-                          </p>
-                          <button @click="fetchOzonCookie" :disabled="isFetchingCookie"
-                            :class="[
-                              'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5 shadow-sm flex-shrink-0',
-                              'text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-200/50',
-                              isFetchingCookie ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.97]'
-                            ]">
-                            <svg v-if="isFetchingCookie" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>{{ isFetchingCookie ? '获取中...' : (ozonConfig?.cookieStatus ? '重新获取' : '获取Cookie') }}</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div class="ozon-worker-card mt-6 rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
+                      <div class="ozon-worker-card rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
                         <div class="flex items-center justify-between gap-4">
                           <div class="flex items-center gap-3 text-left">
                             <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -379,7 +325,7 @@
                             <div>
                               <div class="text-sm font-semibold text-slate-800">本机采集器</div>
                               <div class="text-xs text-slate-500 mt-0.5">
-                                用本机 Chrome 执行 Ozon 前台搜索、链接解析和类型提取
+                                在本机运行 worker，用本机 Chrome 执行 Ozon 搜索、链接解析和类型提取
                               </div>
                             </div>
                           </div>
@@ -417,9 +363,19 @@
                               ></span>
                               <span class="font-medium text-slate-700 truncate">{{ worker.name }}</span>
                             </div>
-                            <div class="text-slate-500">
-                              {{ worker.status === 'online' ? '在线' : worker.status === 'disabled' ? '已禁用' : '离线' }}
-                              <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
+                            <div class="flex items-center gap-3 text-slate-500 flex-shrink-0">
+                              <span>
+                                {{ worker.status === 'online' ? '在线' : worker.status === 'disabled' ? '已禁用' : '离线' }}
+                                <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
+                              </span>
+                              <button
+                                class="worker-delete-btn"
+                                :disabled="deletingWorkerId === worker.id"
+                                title="删除采集器"
+                                @click="deleteOzonWorker(worker)"
+                              >
+                                <Delete class="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -433,26 +389,6 @@
         </div>
       </div>
     </div>
-    <!-- Cookie详情弹窗 -->
-    <el-dialog v-model="showCookieDetailModal" title="Cookie详情" width="500px" :show-close="false">
-      <div v-if="ozonCookieData" class="space-y-4">
-        <div class="flex items-center justify-between py-2 border-b border-gray-100">
-          <span class="text-xs text-gray-500">获取时间</span>
-          <span class="text-xs text-gray-700">{{ ozonCookieData.exported_at ? formatDate(new Date(ozonCookieData.exported_at)) : '-' }}</span>
-        </div>
-        <div class="flex items-center justify-between py-2 border-b border-gray-100">
-          <span class="text-xs text-gray-500">语言设置</span>
-          <span class="text-xs text-gray-700">{{ ozonCookieData.lang || '-' }}</span>
-        </div>
-        <div class="flex items-center justify-between py-2 border-b border-gray-100">
-          <span class="text-xs text-gray-500">货币设置</span>
-          <span class="text-xs text-gray-700">{{ ozonCookieData.currency || '-' }}</span>
-        </div>
-      </div>
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
-        <el-button class="btn-cancel" @click="showCookieDetailModal = false">关闭</el-button>
-      </div>
-    </el-dialog>
     <AppDialog
       v-model="showOzonSettingsModal"
       title="Ozon优选设置"
@@ -552,7 +488,7 @@ import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue';
 import MainLayout from '@/components/MainLayout.vue';
 // AppButton 已移除，使用全局CSS样式
 import { ElMessage } from 'element-plus';
-import { Connection, Key, Link, Lock, Tickets, User } from '@element-plus/icons-vue';
+import { Connection, Delete, Key, Link, Lock, Tickets, User } from '@element-plus/icons-vue';
 import { apiConfigAPI } from '@/api/apiConfigAPI';
 import { ozonPreferenceAPI } from '@/api/ozonPreferenceAPI';
 import { alibabaAPI } from '@/api/alibabaAPI';
@@ -565,6 +501,7 @@ import { useUpdateStore } from '@/store/updateStore';
 import { getOzonCategoryCreatedTime, syncOzonCategoriesIncremental, getCategorySyncLogs } from '@/api/ozonCategoryAPI';
 import { platformIconUrls } from '@/utils/assetUrls';
 import { hasUsableAlibabaToken } from './alibabaAuthState';
+import { appConfirm } from '@/utils/appConfirm';
 
 interface ConfigField {
   key: string;
@@ -632,16 +569,12 @@ watch(activeTabRef, (newTab) => {
 const editingPlatform = ref<string | null>(null);
 const testingConnection = ref<string | null>(null);
 const isSaving = ref(false);
-const isFetchingCookie = ref(false);
-const isLoadingOzonConfig = ref(false);
 const isLoadingWorkers = ref(false);
 const isCreatingWorker = ref(false);
-const ozonCookieData = ref<any>(null);
+const deletingWorkerId = ref<number | null>(null);
 const ozonWorkers = ref<OzonBrowserWorker[]>([]);
 const showWorkerTokenDialog = ref(false);
 const workerConfigSnippet = ref('');
-const ozonConfig = ref<any>(null);
-const showCookieDetailModal = ref(false);
 
 // Ozon优选设置
 const showOzonSettingsModal = ref(false);
@@ -871,31 +804,41 @@ const createOzonWorker = async () => {
   }
 };
 
+const deleteOzonWorker = async (worker: OzonBrowserWorker) => {
+  try {
+    await appConfirm({
+      title: '删除本机采集器',
+      message: `确定要删除“${worker.name}”吗？删除后该采集器令牌会立即失效，需要重新生成令牌才能连接。`,
+      confirmText: '删除',
+      variant: 'danger',
+      icon: 'delete',
+    });
+  } catch {
+    return;
+  }
+
+  deletingWorkerId.value = worker.id;
+  try {
+    const response = await ozonWorkerAPI.deleteWorker(worker.id);
+    if (!response.success) {
+      ElMessage.error(response.message || '删除采集器失败');
+      return;
+    }
+    ozonWorkers.value = ozonWorkers.value.filter(item => item.id !== worker.id);
+    ElMessage.success(response.message || '采集器已删除');
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || error.message || '删除采集器失败');
+  } finally {
+    deletingWorkerId.value = null;
+  }
+};
+
 const copyWorkerConfig = async () => {
   try {
     await navigator.clipboard.writeText(workerConfigSnippet.value);
     ElMessage.success('配置已复制');
   } catch {
     ElMessage.warning('复制失败，请手动复制配置内容');
-  }
-};
-
-const fetchOzonCookie = async () => {
-  isFetchingCookie.value = true;
-  try {
-    const response = await apiConfigAPI.fetchOzonCookie();
-    if (response.success) {
-      ozonCookieData.value = response.data;
-      // 刷新 ozonConfig（从 preference API 读 cookieStatus）
-      await loadOzonConfig();
-      ElMessage.success(response.message || 'Cookie获取成功');
-    } else {
-      ElMessage.error(response.message || 'Cookie获取失败');
-    }
-  } catch {
-    ElMessage.error('Cookie获取失败');
-  } finally {
-    isFetchingCookie.value = false;
   }
 };
 
@@ -948,8 +891,6 @@ const handleDetailClick = () => {
 const refreshApiConfigPageData = async () => {
   await Promise.allSettled([
     loadConfigs(false),
-    loadOzonCookie(),
-    loadOzonConfig(),
     loadOzonWorkers(),
     showDetailDialog.value ? fetchLogs() : Promise.resolve(),
   ]);
@@ -1072,30 +1013,6 @@ const savePreferenceConfig = async () => {
     ElMessage.error('保存设置失败');
   } finally {
     isSavingPreference.value = false;
-  }
-};
-
-const loadOzonCookie = async () => {
-  try {
-    const response = await apiConfigAPI.getOzonCookie();
-    if (response.success && response.data) {
-      ozonCookieData.value = response.data;
-    }
-  } catch {
-  }
-};
-
-/** 从 preference API 加载 ozonConfig（含 cookieStatus） */
-const loadOzonConfig = async () => {
-  isLoadingOzonConfig.value = true;
-  try {
-    const response = await ozonPreferenceAPI.getConfig();
-    if (response.success && response.data) {
-      ozonConfig.value = response.data;
-    }
-  } catch {
-  } finally {
-    isLoadingOzonConfig.value = false;
   }
 };
 
@@ -1283,8 +1200,6 @@ onMounted(() => {
   }
 
   loadConfigs();
-  loadOzonCookie();
-  loadOzonConfig();
   loadOzonWorkers();
 });
 
@@ -1394,14 +1309,6 @@ onUnmounted(() => {});
 
 .ozon-config-body {
   padding: 22px 34px 20px !important;
-}
-
-.ozon-stats-block {
-  margin-bottom: 18px !important;
-}
-
-.ozon-status-card {
-  padding: 14px 16px !important;
 }
 
 .alibaba-config-form {
@@ -1548,6 +1455,30 @@ onUnmounted(() => {});
 .api-config-button:disabled,
 .api-config-button.is-disabled {
   opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.worker-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #94a3b8;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.18s ease;
+}
+
+.worker-delete-btn:hover:not(:disabled) {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.worker-delete-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

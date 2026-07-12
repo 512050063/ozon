@@ -187,7 +187,6 @@ import { ArrowUp, Box, Link, Plus, Search, Postcard } from '@element-plus/icons-
 import ozonCategoriesRaw from '@/assets/ozonCategories.json';
 import { searchOzonProducts, getCachedOzonProducts, batchExtractTypes, getBatchExtractStatus, getOzonProductByUrl, getOzonBrowserTask, normalizeOzonProducts } from '@/api/ozonCrawlerAPI';
 import { resetBatchExtractStatus } from '@/api/ozonTypeAPI';
-import { apiConfigAPI } from '@/api/apiConfigAPI';
 import { createProductSelection } from '@/api/productSelectionAPI';
 import {
   clearSearchProgressState,
@@ -361,7 +360,7 @@ const getSearchCache = async (keyword: string): Promise<ProductWithType[] | null
   }
 };
 
-// 清除所有搜索缓存（Cookie失效时调用）
+// 清除所有搜索缓存
 const clearAllSearchCache = () => {
   localStorage.removeItem('pa_search_keyword');
   localStorage.removeItem('pa_category_path');
@@ -374,46 +373,6 @@ const isLanguageCurrencyWarning = (message?: string) => {
   return /语言|货币|人民币|卢布|中文|CNY|RUB/i.test(text);
 };
 
-// 检查Cookie状态（只检查是否存在，Cookie本身不过期）
-const checkCookieStatus = async (): Promise<boolean> => {
-  try {
-    const response = await apiConfigAPI.getOzonCookie();
-    if (!response.success || !response.data) {
-      return false;
-    }
-    // Cookie存在即视为有效（不过期）
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const checkOzonCookieForManualAdd = async (): Promise<boolean> => {
-  const cookieValid = await checkCookieStatus();
-  if (!cookieValid) {
-    ElMessage.warning('授权过期，请重新获取Cookie');
-    return false;
-  }
-
-  try {
-    const cookieInfoResp = await apiConfigAPI.getOzonCookie();
-    if (cookieInfoResp.success && cookieInfoResp.data) {
-      const cookieData = cookieInfoResp.data;
-      const langOk = cookieData.lang === 'zh' || cookieData.language === 'zh';
-      const cnyOk = cookieData.currency === 'CNY';
-      if (!langOk || !cnyOk) {
-        ElMessage.warning('Cookie异常，请重新获取');
-        return false;
-      }
-    }
-  } catch {
-    ElMessage.warning('Cookie异常，请重新获取');
-    return false;
-  }
-
-  return true;
-};
-
 const resetManualDialog = () => {
   if (manualParsing.value || manualSaving.value) {
     return;
@@ -424,10 +383,6 @@ const resetManualDialog = () => {
 };
 
 const openManualAddDialog = async () => {
-  const cookieValid = await checkOzonCookieForManualAdd();
-  if (!cookieValid) {
-    return;
-  }
   resetManualDialog();
   manualDialogVisible.value = true;
 };
@@ -881,17 +836,6 @@ const handleSearch = async (keyword: string, category?: string, restoredState?: 
   searchProgressStage.value = restoredState?.stage || 'startup';
   persistSearchProgress(keyword, category, 'startup', Math.max(initialProgress, 8), startedAt);
 
-  // Cookie 前置检查
-  const cookieValid = await checkCookieStatus();
-  if (!cookieValid) {
-    ElMessage.warning('授权过期，请重新获取Cookie');
-    // 清空所有搜索缓存
-    clearAllSearchCache();
-    isLoading.value = false;
-    searchProgress.value = 0;
-    return;
-  }
-
   persistSearchProgress(keyword, category, 'environment', 18, startedAt);
 
   products.value = [];
@@ -937,9 +881,8 @@ const handleSearch = async (keyword: string, category?: string, restoredState?: 
       }
       return;
     }
-    // 检查Cookie过期
     if (searchResponse.code === 'COOKIE_EXPIRED' || (searchResponse.success === false && searchResponse.message?.includes('授权过期'))) {
-      ElMessage.warning('授权过期，请重新获取Cookie');
+      ElMessage.warning('本机采集器授权状态异常，请检查采集器运行环境');
       clearAllSearchCache();
       return;
     }
@@ -967,7 +910,7 @@ const handleSearch = async (keyword: string, category?: string, restoredState?: 
   } catch (error: any) {
     const errData = error.response?.data || error;
     if (errData?.code === 'COOKIE_EXPIRED') {
-      ElMessage.warning('授权过期，请重新获取Cookie');
+      ElMessage.warning('本机采集器授权状态异常，请检查采集器运行环境');
       clearAllSearchCache();
     } else if (isLanguageCurrencyWarning(errData?.message || error.message)) {
       ElMessage.warning(errData?.message || error.message || '请确认 Ozon 页面语言为中文、货币为人民币');
@@ -1072,15 +1015,6 @@ const resumeTypeExtraction = async (state: { keyword: string; total: number; ext
   // 找出未提取类型的商品（只处理当前keyword的）
   const pendingProducts = products.value.filter(p => !p.productType || p.productType === '待分类');
   if (pendingProducts.length === 0) {
-    localStorage.removeItem(EXTRACT_STATE_KEY);
-    return;
-  }
-
-  // Cookie 前置检查
-  const cookieValid = await checkCookieStatus();
-  if (!cookieValid) {
-    ElMessage.warning('授权过期，请重新获取Cookie');
-    clearAllSearchCache();
     localStorage.removeItem(EXTRACT_STATE_KEY);
     return;
   }

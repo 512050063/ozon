@@ -33,4 +33,12 @@ export const ozonWorkerAPI = {
       message: response.message,
     };
   },
+
+  deleteWorker: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await request.delete(`/ozon/browser/workers/${id}`);
+    return {
+      success: response.success,
+      message: response.message,
+    };
+  },
 };

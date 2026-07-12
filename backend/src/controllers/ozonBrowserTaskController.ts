@@ -5,6 +5,7 @@ import {
   completeTask,
   createBrowserTask,
   createWorkerRegistration,
+  deleteUserWorker,
   failTask,
   getTaskForUser,
   getUserWorkers,
@@ -57,6 +58,24 @@ export const listWorkers = async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || '获取采集器失败' });
+  }
+};
+
+export const deleteWorker = async (req: Request, res: Response) => {
+  try {
+    const workerId = parseTaskId(req.params.id);
+    if (!workerId) {
+      return res.status(400).json({ success: false, message: '采集器ID无效' });
+    }
+
+    const deleted = await deleteUserWorker(req.user!.id, workerId);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: '采集器不存在' });
+    }
+
+    res.json({ success: true, message: '采集器已删除' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || '删除采集器失败' });
   }
 };
 

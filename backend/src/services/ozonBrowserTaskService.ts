@@ -84,6 +84,17 @@ export const getUserWorkers = async (userId: number) => {
   return workers.map(toPublicWorker);
 };
 
+export const deleteUserWorker = async (userId: number, workerId: number) => {
+  const result = await prisma.ozonBrowserWorker.deleteMany({
+    where: {
+      id: workerId,
+      userId,
+    },
+  });
+
+  return result.count > 0;
+};
+
 export const createBrowserTask = async (userId: number, input: CreateBrowserTaskInput) => {
   const expiresAt = new Date(Date.now() + (input.ttlMs || DEFAULT_TASK_TTL_MS));
   return prisma.ozonBrowserTask.create({

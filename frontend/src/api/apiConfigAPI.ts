@@ -52,15 +52,4 @@ export const apiConfigAPI = {
     return response;
   },
 
-  // 一键获取Ozon Cookie
-  fetchOzonCookie: async (): Promise<ApiResponse<any>> => {
-    const response = await request.post('/ozon/cookie/fetch');
-    return response;
-  },
-
-  // 获取当前Ozon Cookie信息
-  getOzonCookie: async (): Promise<ApiResponse<any>> => {
-    const response = await request.get('/ozon/cookie');
-    return response;
-  },
 };
