@@ -324,7 +324,7 @@
                         <div v-for="item in assistantEnvItems" :key="item.key" class="env-check-row">
                           <span class="assistant-dot" :class="item.ok ? 'is-online' : 'is-offline'"></span>
                           <span class="font-medium text-slate-700">{{ item.label }}</span>
-                          <span class="text-slate-400 truncate">{{ item.value || item.hint }}</span>
+                          <span class="text-slate-400 truncate">{{ item.displayValue }}</span>
                         </div>
                       </div>
                       <p v-else class="section-desc">检测 Python、Chrome、项目路径和 worker 配置状态。</p>
@@ -636,6 +636,7 @@ const assistantEnvItems = computed(() => {
   return Object.entries(localAssistantEnv.value).map(([key, item]) => ({
     key,
     label: assistantEnvLabels[key] || key,
+    displayValue: item.ok ? (item.value || '已就绪') : item.hint,
     ...item,
   }));
 });

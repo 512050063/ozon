@@ -90,16 +90,19 @@ def handle_health(handler: BaseHTTPRequestHandler):
 
 def handle_env_check(handler: BaseHTTPRequestHandler):
     python_path = find_python()
+    local_app_data = os.environ.get("LOCALAPPDATA")
     chrome_candidates = [
         os.environ.get("CHROME_PATH"),
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        str(Path(local_app_data) / "Google/Chrome/Application/chrome.exe") if local_app_data else None,
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         "/usr/bin/google-chrome",
         "/usr/bin/chromium",
         "/usr/bin/chromium-browser",
     ]
     chrome_path = next((item for item in chrome_candidates if item and Path(item).exists()), "")
+    chrome_ok = bool(chrome_path) or command_available("google-chrome") or command_available("chrome") or command_available("chrome.exe") or command_available("chromium")
 
     checks = {
         "python": {
@@ -113,8 +116,8 @@ def handle_env_check(handler: BaseHTTPRequestHandler):
             "hint": "请在项目根目录内启动本机助手",
         },
         "chrome": {
-            "ok": bool(chrome_path) or command_available("google-chrome") or command_available("chrome") or command_available("chromium"),
-            "value": chrome_path or "system",
+            "ok": chrome_ok,
+            "value": chrome_path or ("system" if chrome_ok else ""),
             "hint": "安装 Google Chrome，并先在 Chrome 中登录 Ozon",
         },
         "workerConfig": {
