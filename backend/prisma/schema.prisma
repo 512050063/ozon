@@ -105,8 +105,79 @@ model User {
   syncLogs           SyncLog[]
   autoReplyRules     AutoReplyRule[]
   translationUsages   TranslationUsageMonthly[]
+  ozonBrowserWorkers OzonBrowserWorker[]
+  ozonBrowserTasks   OzonBrowserTask[]
 
   @@map("users")
+}
+
+model OzonBrowserWorker {
+  /// 本机采集器ID
+  id           Int      @id @default(autoincrement())
+  /// 用户ID
+  userId       Int
+  /// 采集器名称
+  name         String
+  /// 采集器令牌哈希
+  tokenHash    String
+  /// 状态：online/offline/disabled
+  status       String   @default("offline")
+  /// 能力列表
+  capabilities Json?
+  /// 最后心跳时间
+  lastSeenAt   DateTime?
+  /// 创建时间
+  createdAt    DateTime @default(now())
+  /// 更新时间
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        OzonBrowserTask[]
+
+  @@index([userId])
+  @@map("ozon_browser_workers")
+}
+
+model OzonBrowserTask {
+  /// Ozon浏览器任务ID
+  id           Int      @id @default(autoincrement())
+  /// 用户ID
+  userId       Int
+  /// 店铺ID
+  storeId      Int?
+  /// 任务类型
+  type         String
+  /// 任务状态：pending/claimed/running/success/failed/cancelled/expired
+  status       String   @default("pending")
+  /// 优先级
+  priority     Int      @default(0)
+  /// 任务入参
+  payload      Json
+  /// 任务结果
+  result       Json?
+  /// 错误编码
+  errorCode    String?
+  /// 错误消息
+  errorMessage String?
+  /// 采集器ID
+  workerId     Int?
+  /// 领取时间
+  claimedAt    DateTime?
+  /// 开始时间
+  startedAt    DateTime?
+  /// 完成时间
+  finishedAt   DateTime?
+  /// 过期时间
+  expiresAt    DateTime?
+  /// 创建时间
+  createdAt    DateTime @default(now())
+  /// 更新时间
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worker       OzonBrowserWorker? @relation(fields: [workerId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, priority])
+  @@index([workerId])
+  @@map("ozon_browser_tasks")
 }
 
 model UserLoginSession {

@@ -112,6 +112,8 @@ import supplySourceRoutes from './routes/supplySourceRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import translationRoutes from './routes/translationRoutes';
 import installRoutes from './routes/installRoutes';
+import ozonBrowserTaskRoutes from './routes/ozonBrowserTaskRoutes';
+import workerRoutes from './routes/workerRoutes';
 import { authenticateToken } from './middleware/authMiddleware';
 
 // 安装向导路由必须在全局认证前注册；安装完成后由安装锁阻止写操作。
@@ -120,7 +122,7 @@ app.use('/api/install', installRoutes);
 // 全局认证中间件 - 除了 auth 和 health 路由外，所有请求都需要登录
 app.use('/api', (req, res, next) => {
   // 排除不需要认证的路由
-  if (req.path.startsWith('/auth') || req.path === '/health' || req.path.startsWith('/install') || req.path.startsWith('/ozon/push')) {
+  if (req.path.startsWith('/auth') || req.path === '/health' || req.path.startsWith('/install') || req.path.startsWith('/ozon/push') || req.path.startsWith('/worker')) {
     return next();
   }
   // 1688 callback 换取 Token 接口：跨域无法携带 JWT，通过 state 参数识别用户，无需全局认证
@@ -159,6 +161,8 @@ app.use('/api/ozon/finance', ozonFinanceRoutes);
 app.use('/api/ozon/promotions', ozonPromotionRoutes);
 app.use('/api/ozon/type', ozonTypeRoutes);
 app.use('/api/ozon/preference', ozonPreferenceRoutes);
+app.use('/api/ozon/browser', ozonBrowserTaskRoutes);
+app.use('/api/worker', workerRoutes);
 app.use('/api/auto-reply', autoReplyRoutes);
 app.use('/api/product-supply', productSupplyRoutes);
 app.use('/api/supply-sources', supplySourceRoutes);
