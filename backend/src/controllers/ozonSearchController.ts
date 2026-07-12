@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import { searchOzonProducts } from '../services/ozonSearchService';
 import { resolveOzonProductLinkWithDefaultDependencies } from '../services/ozonProductLinkService';
+import { createBrowserTask } from '../services/ozonBrowserTaskService';
 import logger from '../config/logger';
+
+const shouldUseLocalWorker = () => process.env.OZON_BROWSER_WORKER_MODE === 'required';
 
 export async function searchProducts(req: Request, res: Response) {
   try {
@@ -11,6 +14,24 @@ export async function searchProducts(req: Request, res: Response) {
       return res.status(400).json({
         success: false,
         message: '请提供搜索关键词'
+      });
+    }
+
+    if (shouldUseLocalWorker()) {
+      const task = await createBrowserTask(req.user!.id, {
+        type: 'preference_search',
+        payload: {
+          keyword,
+          category: typeof category === 'string' ? category : '',
+        },
+        priority: 10,
+      });
+      return res.json({
+        success: false,
+        data: [],
+        code: 'LOCAL_WORKER_TASK_CREATED',
+        taskId: task.id,
+        message: '已创建本机采集任务，请保持本机采集器在线',
       });
     }
 
@@ -34,6 +55,20 @@ export async function getProductByUrl(req: Request, res: Response) {
       return res.status(400).json({
         success: false,
         message: '商品链接不能为空'
+      });
+    }
+
+    if (shouldUseLocalWorker()) {
+      const task = await createBrowserTask(req.user!.id, {
+        type: 'product_by_url',
+        payload: { productUrl },
+        priority: 20,
+      });
+      return res.json({
+        success: false,
+        code: 'LOCAL_WORKER_TASK_CREATED',
+        taskId: task.id,
+        message: '已创建本机采集任务，请保持本机采集器在线',
       });
     }
 

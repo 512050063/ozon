@@ -16,6 +16,17 @@ export interface OzonProduct {
   typeId?: number | null;
 }
 
+export interface OzonBrowserTask {
+  id: number;
+  type: string;
+  status: 'pending' | 'claimed' | 'running' | 'success' | 'failed' | 'cancelled' | 'expired';
+  result?: any;
+  errorCode?: string;
+  errorMessage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 /**
  * 搜索Ozon商品
  * @param keyword - 搜索关键词
@@ -57,7 +68,7 @@ const deriveOriginalPrice = (price: number, originalPrice: number, discount: num
   return originalPrice;
 };
 
-const normalizeOzonProducts = (items: any[] = []): OzonProduct[] => items.map((item: any) => {
+export const normalizeOzonProducts = (items: any[] = []): OzonProduct[] => items.map((item: any) => {
   // 从链接中提取货号（最后面的数字）
   let productId = '';
   const link = item.link || item.productUrl || '';
@@ -96,7 +107,7 @@ export async function searchOzonProducts(
   keyword: string,
   categoryId?: string,
   page: number = 1
-): Promise<{ success: boolean; data: OzonProduct[]; message: string; code?: string }> {
+): Promise<{ success: boolean; data: OzonProduct[]; message: string; code?: string; taskId?: number }> {
   const params = new URLSearchParams({
     keyword,
     page: page.toString(),
@@ -114,6 +125,7 @@ export async function searchOzonProducts(
       data: normalizeOzonProducts(response.data),
       message: response.message || '',
       code: response.code,
+      taskId: response.taskId,
     };
   }
 
@@ -122,6 +134,16 @@ export async function searchOzonProducts(
     data: [],
     message: response.message || '',
     code: response.code,
+    taskId: response.taskId,
+  };
+}
+
+export async function getOzonBrowserTask(taskId: number): Promise<{ success: boolean; data?: OzonBrowserTask; message: string }> {
+  const response = await request.get(`/ozon/browser/tasks/${taskId}`);
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || '',
   };
 }
 
@@ -215,11 +237,13 @@ export async function getBatchExtractStatus(): Promise<{
  */
 export async function getOzonProductByUrl(
   productUrl: string
-): Promise<{ success: boolean; data: OzonProduct; message: string }> {
+): Promise<{ success: boolean; data: OzonProduct; message: string; code?: string; taskId?: number }> {
   const response = await request.post('/ozon/search/product-by-url', { productUrl });
   return {
     success: response.success,
     data: response.data,
     message: response.message || '',
+    code: response.code,
+    taskId: response.taskId,
   };
 }

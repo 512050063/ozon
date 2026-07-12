@@ -185,7 +185,7 @@ import ProgressOverlay from './components/ProgressOverlay.vue';
 import { ElMessage } from 'element-plus';
 import { ArrowUp, Box, Link, Plus, Search, Postcard } from '@element-plus/icons-vue';
 import ozonCategoriesRaw from '@/assets/ozonCategories.json';
-import { searchOzonProducts, getCachedOzonProducts, batchExtractTypes, getBatchExtractStatus, getOzonProductByUrl } from '@/api/ozonCrawlerAPI';
+import { searchOzonProducts, getCachedOzonProducts, batchExtractTypes, getBatchExtractStatus, getOzonProductByUrl, getOzonBrowserTask, normalizeOzonProducts } from '@/api/ozonCrawlerAPI';
 import { resetBatchExtractStatus } from '@/api/ozonTypeAPI';
 import { apiConfigAPI } from '@/api/apiConfigAPI';
 import { createProductSelection } from '@/api/productSelectionAPI';
@@ -447,6 +447,19 @@ const parseManualProductUrl = async () => {
     await new Promise(resolve => setTimeout(resolve, 200));
     manualProgressText.value = '获取商品信息';
     const response = await getOzonProductByUrl(productUrl);
+    if (response.code === 'LOCAL_WORKER_TASK_CREATED' && response.taskId) {
+      manualProgressText.value = '本机采集器执行中';
+      const product = await waitForWorkerProductByUrl(response.taskId);
+      manualParsedProduct.value = {
+        ...product,
+        productType: product.productType || '',
+        descriptionCategoryId: product.descriptionCategoryId ?? null,
+        typeId: product.typeId ?? null,
+      };
+      manualProgressText.value = '解析完成';
+      ElMessage.success('链接解析成功');
+      return;
+    }
     manualProgressText.value = '获取类型';
 
     if (!response.success || !response.data) {
@@ -598,6 +611,74 @@ const toProductWithType = (item: any): ProductWithType => ({
   stock: item.stock || 0,
   productType: item.productType || '',
 });
+
+const extractProductsFromWorkerResult = (result: any) => {
+  const json = result?.json || result;
+  const products = json?.products || json?.data || [];
+  return Array.isArray(products) ? normalizeOzonProducts(products).map(toProductWithType) : [];
+};
+
+const waitForWorkerSearchProducts = async (taskId: number, keyword: string, category: string | undefined, startedAt: number) => {
+  for (let i = 0; i < 120; i++) {
+    const taskResp = await getOzonBrowserTask(taskId);
+    const task = taskResp.data;
+    if (!taskResp.success || !task) {
+      throw new Error(taskResp.message || '本机采集任务不存在');
+    }
+
+    if (task.status === 'success') {
+      const workerProducts = extractProductsFromWorkerResult(task.result);
+      if (workerProducts.length === 0) {
+        throw new Error('本机采集完成，但未获取到商品数据');
+      }
+      return workerProducts;
+    }
+
+    if (['failed', 'cancelled', 'expired'].includes(task.status)) {
+      throw new Error(task.errorMessage || '本机采集任务失败');
+    }
+
+    const progress = Math.min(88, 64 + i * 0.3);
+    persistSearchProgress(keyword, category, 'fetching', progress, startedAt);
+    await sleep(2000);
+  }
+
+  throw new Error('本机采集任务超时，请确认采集器是否在线');
+};
+
+const extractProductFromWorkerResult = (result: any) => {
+  const json = result?.json || result;
+  const product = json?.product || json?.data || null;
+  if (!product) return null;
+  return normalizeOzonProducts([product]).map(toProductWithType)[0] || null;
+};
+
+const waitForWorkerProductByUrl = async (taskId: number) => {
+  for (let i = 0; i < 120; i++) {
+    const taskResp = await getOzonBrowserTask(taskId);
+    const task = taskResp.data;
+    if (!taskResp.success || !task) {
+      throw new Error(taskResp.message || '本机采集任务不存在');
+    }
+
+    if (task.status === 'success') {
+      const product = extractProductFromWorkerResult(task.result);
+      if (!product) {
+        throw new Error('本机采集完成，但未获取到商品数据');
+      }
+      return product;
+    }
+
+    if (['failed', 'cancelled', 'expired'].includes(task.status)) {
+      throw new Error(task.errorMessage || '本机采集任务失败');
+    }
+
+    manualProgressText.value = i % 2 === 0 ? '本机采集器获取商品信息' : '等待 Ozon 页面返回数据';
+    await sleep(2000);
+  }
+
+  throw new Error('本机采集任务超时，请确认采集器是否在线');
+};
 
 const findProductIndexByUrl = (url: string) => {
   let idx = products.value.findIndex(p => p.productUrl === url);
@@ -844,6 +925,18 @@ const handleSearch = async (keyword: string, category?: string, restoredState?: 
 
     // 调用真实搜索 API
     const searchResponse = await searchOzonProducts(keyword, category);
+    if (searchResponse.code === 'LOCAL_WORKER_TASK_CREATED' && searchResponse.taskId) {
+      ElMessage.info(searchResponse.message || '本机采集器执行中');
+      persistSearchProgress(keyword, category, 'fetching', 64, startedAt);
+      const workerProducts = await waitForWorkerSearchProducts(searchResponse.taskId, keyword, category, startedAt);
+      renderProducts(workerProducts);
+      persistSearchProgress(keyword, category, 'parsing', 82, startedAt);
+      extractCompleted.value = workerProducts.every(p => !!p.productType && p.productType !== '待分类');
+      if (!extractCompleted.value) {
+        void startBackgroundTypeExtraction(keyword, category, workerProducts);
+      }
+      return;
+    }
     // 检查Cookie过期
     if (searchResponse.code === 'COOKIE_EXPIRED' || (searchResponse.success === false && searchResponse.message?.includes('授权过期'))) {
       ElMessage.warning('授权过期，请重新获取Cookie');
