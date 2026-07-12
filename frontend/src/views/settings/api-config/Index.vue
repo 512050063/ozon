@@ -503,6 +503,7 @@ import AppDialog from '@/components/ui/AppDialog.vue';
 import { useUpdateStore } from '@/store/updateStore';
 import { getOzonCategoryCreatedTime, syncOzonCategoriesIncremental, getCategorySyncLogs } from '@/api/ozonCategoryAPI';
 import { platformIconUrls } from '@/utils/assetUrls';
+import { hasUsableAlibabaToken } from './alibabaAuthState';
 
 interface ConfigField {
   key: string;
@@ -1007,6 +1008,20 @@ const loadOzonConfig = async () => {
   }
 };
 
+const showAlibabaAuthRefreshResult = (refreshed: boolean) => {
+  if (!refreshed) {
+    ElMessage.warning('Token已获取，但配置刷新失败，请手动刷新页面');
+    return;
+  }
+
+  if (hasUsableAlibabaToken(alibabaAuthStatus)) {
+    ElMessage.success('授权成功');
+    return;
+  }
+
+  ElMessage.error('授权未完成，请重新授权');
+};
+
 const handle1688Auth = async () => {
   try {
     const result = await alibabaAPI.getAuthorizeInfo();
@@ -1027,11 +1042,7 @@ const handle1688Auth = async () => {
           const tokenResult = await alibabaAPI.exchangeToken(code);
           if (tokenResult.success && tokenResult.data) {
             const refreshed = await loadConfigs();
-            if (refreshed) {
-              ElMessage.success('授权成功');
-            } else {
-              ElMessage.warning('Token已获取，但配置刷新失败，请手动刷新页面');
-            }
+            showAlibabaAuthRefreshResult(refreshed);
           } else {
             ElMessage.error(tokenResult.message || 'Token换取失败');
           }
@@ -1051,11 +1062,7 @@ const handle1688Auth = async () => {
             const result = await alibabaAPI.getAuthStatus();
             if (result.success && result.data && result.data.hasToken && !result.data.isExpired) {
               const refreshed = await loadConfigs();
-              if (refreshed) {
-                ElMessage.success('授权成功');
-              } else {
-                ElMessage.warning('Token已获取，但配置刷新失败，请手动刷新页面');
-              }
+              showAlibabaAuthRefreshResult(refreshed);
               if (pollTimer) {
                 clearInterval(pollTimer);
                 pollTimer = null;
@@ -1082,11 +1089,7 @@ const handle1688Auth = async () => {
         if (!data) return;
         if (data.type === 'ALIBABA_AUTH_SUCCESS') {
           const refreshed = await loadConfigs();
-          if (refreshed) {
-            ElMessage.success('授权成功');
-          } else {
-            ElMessage.warning('Token已获取，但配置刷新失败，请手动刷新页面');
-          }
+          showAlibabaAuthRefreshResult(refreshed);
           window.removeEventListener('message', messageHandler);
           if (pollTimer) {
             clearInterval(pollTimer);
