@@ -289,10 +289,13 @@
                     <div class="flex items-center gap-3">
                       <button
                         @click="openOzonSettings"
-                        class="api-config-button api-config-button--secondary"
+                        class="ozon-settings-icon-btn"
                         title="搜索与缓存设置"
                       >
-                        搜索缓存设置
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                       </button>
                       <AppUpdateButton text="类目更新" :loading="isSyncingCategories" :last-update-time="lastUpdateTime"
                         :update-status="updateStatus === '更新成功' ? 'success' : updateStatus === '更新失败' ? 'error' : 'idle'"
@@ -1408,10 +1411,10 @@ onUnmounted(() => {});
 .ozon-control-panel {
   width: min(100%, 1180px);
   margin: 0 auto;
-  border: 1px solid #dbe4f0;
+  border: 1px solid #d8e6f7;
   border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.07);
   overflow: hidden;
 }
 
@@ -1421,7 +1424,7 @@ onUnmounted(() => {});
   justify-content: space-between;
   gap: 20px;
   padding: 18px 22px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid #e7eff9;
   background: linear-gradient(90deg, #ffffff 0%, #f8fbff 55%, #f7fdf9 100%);
 }
 
@@ -1437,26 +1440,48 @@ onUnmounted(() => {});
   flex-shrink: 0;
 }
 
+.ozon-settings-icon-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfe0f6;
+  border-radius: 10px;
+  color: #2563eb;
+  background: #f8fbff;
+  transition: all 0.18s ease;
+}
+
+.ozon-settings-icon-btn:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12);
+}
+
 .ozon-assistant-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  padding: 18px 22px;
+  gap: 12px;
+  padding: 16px 22px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
 }
 
 .ozon-assistant-section,
 .worker-record-panel {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dce8f5;
   border-radius: 12px;
-  background: #fbfdff;
+  background: rgba(255, 255, 255, 0.78);
   padding: 16px;
   text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .section-kicker {
-  color: #64748b;
+  color: #475569;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 16px;
   margin-bottom: 8px;
 }
@@ -1523,6 +1548,7 @@ onUnmounted(() => {});
 
 .worker-record-panel {
   margin: 0 22px 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .worker-record-row,
@@ -1531,13 +1557,20 @@ onUnmounted(() => {});
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
+  min-height: 42px;
   border-radius: 10px;
   background: #ffffff;
-  border: 1px solid #eef2f7;
-  padding: 8px 11px;
+  border: 1px solid #e6edf5;
+  padding: 9px 12px;
   color: #64748b;
   font-size: 12px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.worker-record-row:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
 }
 
 .worker-empty-row {
