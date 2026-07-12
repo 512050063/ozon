@@ -218,6 +218,7 @@ export async function saveToken(userId: number, tokenData: any): Promise<void> {
     logger.info(`Token已保存到user_tokens表, userId=${userId}, 过期时间=${expiresAt.toISOString()}`);
   } catch (error) {
     logger.error('保存Token到数据库失败:', error);
+    throw error;
   }
 }
 
