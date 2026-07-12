@@ -58,16 +58,6 @@ export const apiConfigAPI = {
     return response;
   },
 
-  // 手动导入Ozon Cookie
-  importOzonCookie: async (formData: FormData): Promise<ApiResponse<any>> => {
-    const response = await request.post('/ozon/cookie/import', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response;
-  },
-
   // 获取当前Ozon Cookie信息
   getOzonCookie: async (): Promise<ApiResponse<any>> => {
     const response = await request.get('/ozon/cookie');

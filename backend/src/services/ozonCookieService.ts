@@ -186,62 +186,6 @@ function runCookieScript(scriptPath: string, resolve: (result: CookieResult) => 
   });
 }
 
-// 手动导入Cookie - 处理上传的文件
-export async function importOzonCookie(req: any): Promise<CookieResult> {
-  return new Promise((resolve) => {
-    const uploadedFile = req.file;
-
-    // 检查是否有文件上传
-    if (!uploadedFile) {
-      resolve({
-        success: false,
-        data: null,
-        message: '请选择要上传的文件'
-      });
-      return;
-    }
-
-    // 验证文件类型
-    const originalName = uploadedFile.originalname || '';
-    const mimeType = uploadedFile.mimetype || '';
-    if (mimeType !== 'application/json' && !originalName.endsWith('.json')) {
-      resolve({
-        success: false,
-        data: null,
-        message: '请上传JSON格式的文件'
-      });
-      return;
-    }
-    
-    try {
-      // 读取文件内容
-      const content = Buffer.isBuffer(uploadedFile.buffer)
-        ? uploadedFile.buffer.toString('utf-8')
-        : '';
-      const cookieData = JSON.parse(content);
-      
-      // 保存到文件 + 更新状态
-      saveCookieToFile(cookieData);
-      updateCookieStatus(cookieData.exported_at, cookieData.lang, cookieData.currency).catch(() => {});
-      
-      logger.info('Cookie文件导入成功');
-      
-      resolve({
-        success: true,
-        data: cookieData,
-        message: 'Cookie导入成功'
-      });
-    } catch (error: any) {
-      logger.error(`Cookie导入失败: ${error.message}`);
-      resolve({
-        success: false,
-        data: null,
-        message: `文件解析失败: ${error.message}`
-      });
-    }
-  });
-}
-
 // 获取当前Cookie信息
 export async function getOzonCookie(): Promise<CookieResult> {
   try {

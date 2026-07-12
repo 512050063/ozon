@@ -351,6 +351,25 @@
                           </div>
                         </div>
                       </div>
+                      <div class="ozon-cookie-note mb-6 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                          <p class="text-xs text-blue-700 leading-5 text-left">
+                            获取 Cookie 仍用于刷新中文和人民币环境状态；云端部署后的 Ozon 搜索、链接解析和类型提取由本机采集器执行。
+                          </p>
+                          <button @click="fetchOzonCookie" :disabled="isFetchingCookie"
+                            :class="[
+                              'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5 shadow-sm flex-shrink-0',
+                              'text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-200/50',
+                              isFetchingCookie ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.97]'
+                            ]">
+                            <svg v-if="isFetchingCookie" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>{{ isFetchingCookie ? '获取中...' : (ozonConfig?.cookieStatus ? '重新获取' : '获取Cookie') }}</span>
+                          </button>
+                        </div>
+                      </div>
                       <div class="ozon-worker-card mt-6 rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
                         <div class="flex items-center justify-between gap-4">
                           <div class="flex items-center gap-3 text-left">
@@ -403,42 +422,6 @@
                               <span v-if="worker.lastSeenAt"> · {{ formatDate(new Date(worker.lastSeenAt)) }}</span>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                      <!-- 提示 + 按钮 -->
-                      <div class="ozon-action-area text-center py-4">
-                        <p class="text-xs text-slate-500 mb-4">
-                          {{ isLoadingOzonConfig
-                            ? '正在获取 Cookie 配置状态'
-                            : ozonConfig?.cookieStatus
-                            ? '设置中文语言和人民币货币，使Ozon优选获取的商品信息正确显示'
-                            : '尚未配置 Cookie，请先获取或导入' }}
-                        </p>
-                        <div class="flex flex-row gap-2.5 justify-center">
-                          <button @click="fetchOzonCookie" :disabled="isFetchingCookie"
-                            :class="[
-                              'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5 shadow-sm',
-                              'text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-200/50',
-                              isFetchingCookie ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.97]'
-                            ]">
-                            <svg v-if="isFetchingCookie" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>{{ isFetchingCookie ? '获取中...' : (ozonConfig?.cookieStatus ? '重新获取' : '一键获取') }}</span>
-                          </button>
-                          <button @click="triggerCookieFileImport" :disabled="isImportingCookie"
-                            :class="[
-                              'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5',
-                              'text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300',
-                              isImportingCookie ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.97]'
-                            ]">
-                            <svg v-if="isImportingCookie" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>{{ isImportingCookie ? '导入..' : (ozonConfig?.cookieStatus ? '手动导入' : '手动导入') }}</span>
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -548,13 +531,15 @@
           <div class="text-xs font-semibold text-slate-600 text-left mb-2">worker.config.json</div>
           <pre class="worker-token-code">{{ workerConfigSnippet }}</pre>
         </div>
+        <div>
+          <div class="text-xs font-semibold text-slate-600 text-left mb-2">启动命令</div>
+          <pre class="worker-token-code">py worker/ozon-worker.py --config worker/worker.config.json --loop</pre>
+        </div>
         <button class="api-config-button api-config-button--secondary w-full justify-center" @click="copyWorkerConfig">
           复制配置
         </button>
       </div>
     </AppDialog>
-    <!-- 文件上传隐藏input -->
-    <input ref="cookieFileInput" type="file" accept=".json" class="hidden" @change="handleCookieFileSelect" />
   </MainLayout>
 
   <!-- 类目更新日志弹窗 -->
@@ -648,7 +633,6 @@ const editingPlatform = ref<string | null>(null);
 const testingConnection = ref<string | null>(null);
 const isSaving = ref(false);
 const isFetchingCookie = ref(false);
-const isImportingCookie = ref(false);
 const isLoadingOzonConfig = ref(false);
 const isLoadingWorkers = ref(false);
 const isCreatingWorker = ref(false);
@@ -657,7 +641,6 @@ const ozonWorkers = ref<OzonBrowserWorker[]>([]);
 const showWorkerTokenDialog = ref(false);
 const workerConfigSnippet = ref('');
 const ozonConfig = ref<any>(null);
-const cookieFileInput = ref<HTMLInputElement | null>(null);
 const showCookieDetailModal = ref(false);
 
 // Ozon优选设置
@@ -1092,36 +1075,6 @@ const savePreferenceConfig = async () => {
   }
 };
 
-const triggerCookieFileImport = () => {
-  cookieFileInput.value?.click();
-};
-
-const handleCookieFileSelect = async (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-  isImportingCookie.value = true;
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await apiConfigAPI.importOzonCookie(formData);
-    if (response.success) {
-      ozonCookieData.value = response.data;
-      await loadOzonConfig();
-      ElMessage.success(response.message || 'Cookie导入成功');
-    } else {
-      ElMessage.error(response.message || 'Cookie导入失败');
-    }
-  } catch {
-    ElMessage.error('Cookie导入失败');
-  } finally {
-    isImportingCookie.value = false;
-    if (target) {
-      target.value = '';
-    }
-  }
-};
-
 const loadOzonCookie = async () => {
   try {
     const response = await apiConfigAPI.getOzonCookie();
@@ -1449,15 +1402,6 @@ onUnmounted(() => {});
 
 .ozon-status-card {
   padding: 14px 16px !important;
-}
-
-.ozon-action-area {
-  padding-top: 8px !important;
-  padding-bottom: 0 !important;
-}
-
-.ozon-action-area p {
-  margin-bottom: 14px !important;
 }
 
 .alibaba-config-form {
