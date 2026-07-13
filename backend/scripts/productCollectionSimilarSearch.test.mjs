@@ -29,6 +29,9 @@ assert.match(productCollection, /similarSearchMode/, 'similar drawer should trac
 assert.match(productCollection, /similarSearchMode\.value === 'image'[\s\S]*?alibabaAPI\.searchByImage/, 'loading more same-product results should continue image search pagination')
 assert.match(productCollection, /searchSameProductsByImage[\s\S]*?similarSearchMode\.value = 'image'[\s\S]*?hasMoreSimilar\.value = similarProducts\.value\.length < total/, 'same-product image search should preserve pagination state')
 assert.match(productCollection, /unwrapDisplayImageUrl[\s\S]*?\/api\/images\/proxy[\s\S]*?searchParams\.get\('url'\)/, 'same-product image search should unwrap display proxy URLs before calling 1688 image search')
+assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同类操作/, 'same-category search should be blocked when category matching is explicitly unverified')
+assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同款操作/, 'same-product image search should be blocked when category matching is explicitly unverified')
+assert.match(productCollection, /toImageSearchUrl[\s\S]*?new URL\(unwrapped, window\.location\.origin\)[\s\S]*?parsed\.href/, 'same-product image search should convert local display image paths to public absolute URLs before calling 1688')
 
 assert.doesNotMatch(alibabaService, /call1688Api\(userId,\s*'com\.alibaba\.fenxiao',\s*'product\.keywords\.search'/, 'fenxiao keyword search should not fall back to POST because POST can ignore keywords')
 assert.match(alibabaService, /filterRelevanceWithFallback/, 'keyword search should avoid returning too few items when relevance filtering is too aggressive')

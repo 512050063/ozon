@@ -704,6 +704,19 @@ const unwrapDisplayImageUrl = (value: unknown): string => {
   return raw;
 };
 
+const toImageSearchUrl = (value: unknown): string => {
+  const unwrapped = unwrapDisplayImageUrl(value);
+  if (!unwrapped) return '';
+  try {
+    const parsed = new URL(unwrapped, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+  }
+  return unwrapped;
+};
+
 const loadProductDetailImages = async (product: any): Promise<string[]> => {
   const productId = product.id || product.productId;
   if (!productId) return [];
@@ -734,8 +747,7 @@ const findSimilarProducts = async (product: any) => {
   // 校验商品类型是否有效
   const hasNoCategory = !product.category || !product.category.trim();
   const categoryMeta = getProductCategoryMeta(product);
-  const categoryUnverified = product.categoryVerified === false && (!categoryMeta.descriptionCategoryId || !categoryMeta.typeId);
-  if (hasNoCategory || categoryUnverified) {
+  if (hasNoCategory || product.categoryVerified === false) {
     ElMessage.warning('请先设置并确认商品类型，再进行搜同类操作');
     return;
   }
@@ -764,6 +776,10 @@ const findSameProducts = async (product: any) => {
   if (!isAuthed) return;
   // 保存参考商品的类目信息
   const categoryMeta = getProductCategoryMeta(product);
+  if (product.categoryVerified === false) {
+    ElMessage.warning('请先设置并确认商品类型，再进行搜同款操作');
+    return;
+  }
   if (!categoryMeta.descriptionCategoryId || !categoryMeta.typeId) {
     ElMessage.warning('请先选择商品类目后再搜同款');
     openCategoryDialog(product);
@@ -776,7 +792,7 @@ const findSameProducts = async (product: any) => {
   drawerTitle.value = '同款商品';
   similarDrawerVisible.value = true;
   // 使用商品图片URL进行图片搜索
-  const imageUrl = unwrapDisplayImageUrl(product.imageUrl || product.image || product.image_url);
+  const imageUrl = toImageSearchUrl(product.imageUrl || product.image || product.image_url);
   searchSameProductsByImage(imageUrl);
 };
 // 搜同- 关键词搜索（直接搜商品名，首页后由无限滚动翻页）
@@ -812,9 +828,35 @@ const searchSimilarProducts = async (keyword: string) => {
     isSearchingSimilar.value = false;
   }
 };
+
+const applyKeywordFallbackForImageSearch = async (): Promise<boolean> => {
+  const fallbackKeyword = currentSearchKeyword.value.trim();
+  if (!fallbackKeyword) return false;
+
+  similarSearchMode.value = 'keyword';
+  similarImageUrl.value = '';
+  similarUsedKeyword.value = fallbackKeyword;
+
+  try {
+    const result = await alibabaAPI.searchSimilar(fallbackKeyword, 1, 40);
+    if (result.success && result.data && result.data.items && result.data.items.length > 0) {
+      similarProducts.value = result.data.items;
+      if ((result.data as any).usedKeyword) similarUsedKeyword.value = (result.data as any).usedKeyword;
+      const total = result.data.total || result.data.items.length;
+      similarTotal.value = total;
+      hasMoreSimilar.value = similarProducts.value.length < total;
+      ElMessage.warning('图搜无结果，已按商品名称搜索');
+      return true;
+    }
+  } catch {
+  }
+
+  return false;
+};
+
 // 搜同款-图片搜索（用Ozon商品图片URL）
 const searchSameProductsByImage = async (imageUrl: string) => {
-  const searchImageUrl = unwrapDisplayImageUrl(imageUrl);
+  const searchImageUrl = toImageSearchUrl(imageUrl);
   isSearchingSimilar.value = true;
   similarProducts.value = [];
   isMockData.value = false;
@@ -838,12 +880,18 @@ const searchSameProductsByImage = async (imageUrl: string) => {
       similarTotal.value = total;
       hasMoreSimilar.value = similarProducts.value.length < total;
     } else {
-      ElMessage.warning(result.message || '未找到同款商品');
-      similarProducts.value = [];
+      const fallbackApplied = await applyKeywordFallbackForImageSearch();
+      if (!fallbackApplied) {
+        ElMessage.warning(result.message || '未找到同款商品');
+        similarProducts.value = [];
+      }
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '图片搜索失败');
-    similarProducts.value = [];
+    const fallbackApplied = await applyKeywordFallbackForImageSearch();
+    if (!fallbackApplied) {
+      ElMessage.error(error.message || '图片搜索失败');
+      similarProducts.value = [];
+    }
   } finally {
     stopSearchTimer();
     isSearchingSimilar.value = false;
