@@ -5,6 +5,7 @@
     placement="right"
     :show-close="false"
     class="similar-products-drawer"
+    body-class="similar-products-drawer-body"
   >
     <template #title>
       <div class="app-surface-header app-surface-header--drawer">
@@ -328,14 +329,14 @@ defineExpose({
 </script>
 
 <style scoped>
-:global(.similar-products-drawer .el-drawer__body) {
-  padding: 0 !important;
+:global(.similar-products-drawer-body) {
+  padding: 26px 30px 32px !important;
 }
 
 .similar-drawer-body {
   box-sizing: border-box;
   min-height: 100%;
-  padding: 24px 24px 28px;
+  padding: 0;
 }
 
 .similar-drawer-alert {
