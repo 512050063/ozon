@@ -8,4 +8,6 @@ const controllerSource = fs.readFileSync(path.resolve(__dirname, '../controllers
 assert.match(routeSource, /router\.get\(['"]\/proxy['"]/, 'image proxy route should be registered before /:id routes');
 assert.match(controllerSource, /proxyRemoteImage/, 'image controller should expose proxyRemoteImage');
 assert.match(controllerSource, /isAllowedRemoteImageUrl/, 'image proxy should validate allowed remote image URLs');
-assert.match(controllerSource, /ozon/i, 'image proxy should only allow Ozon remote images');
+assert.match(controllerSource, /ozon/i, 'image proxy should allow Ozon remote images');
+assert.match(controllerSource, /alicdn/i, 'image proxy should allow Alibaba CDN product images');
+assert.match(controllerSource, /detail\.1688\.com/, 'Alibaba CDN images should be proxied with a 1688 referer');

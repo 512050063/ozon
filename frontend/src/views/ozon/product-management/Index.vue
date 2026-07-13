@@ -320,7 +320,6 @@ const {
 } = useProductNameTranslations({
   products,
   resolveTranslations: (names) => ozonProductAPI.resolveProductNameTranslations(names),
-  onTranslationNotConfigured: () => ElMessage.warning('未配置翻译 API，商品名称将暂时显示原文'),
   onQuotaExceeded: () => ElMessage.warning('本月翻译字符额度不足，未翻译的商品名称将暂时显示原文'),
 });
 const isProductIdInSet = (setRef: typeof archivingProductIds, product: any): boolean => {

@@ -8,9 +8,9 @@
     @click="emit('click', $event)"
   >
     <el-image
-      v-if="normalizedSrc"
+      v-if="renderedSrc"
       class="app-image-inner"
-      :src="normalizedSrc"
+      :src="renderedSrc"
       :alt="alt"
       :fit="fit"
       :lazy="lazy"
@@ -18,7 +18,7 @@
       :preview-teleported="previewTeleported"
       :initial-index="initialIndex"
       @load="state = 'loaded'"
-      @error="state = 'error'"
+      @error="handleImageError"
     >
       <template #placeholder>
         <div class="app-image-fallback" aria-label="图片加载中">
@@ -36,7 +36,7 @@
         </div>
       </template>
     </el-image>
-    <div v-else class="app-image-fallback" :aria-label="emptyText">
+    <div v-else class="app-image-fallback" :aria-label="state === 'error' ? errorText : emptyText">
       <el-icon class="app-image-fallback-icon"><Picture /></el-icon>
     </div>
   </div>
@@ -88,15 +88,35 @@ const normalizedSrc = computed(() => {
   return toDisplayImageUrl(value);
 });
 
+const failedSrc = ref('');
+
+const renderedSrc = computed(() => {
+  const value = normalizedSrc.value;
+  if (!value || failedSrc.value === value) return '';
+  return value;
+});
+
 const normalizedPreviewList = computed(() => {
-  const list = props.previewSrcList.length > 0 ? props.previewSrcList : [normalizedSrc.value];
+  const list = props.previewSrcList.length > 0 ? props.previewSrcList.map(item => toDisplayImageUrl(item)) : [renderedSrc.value];
   return list.filter(Boolean);
 });
+
+const handleImageError = () => {
+  const value = normalizedSrc.value;
+  if (value) failedSrc.value = value;
+  state.value = 'error';
+};
 
 watch(
   () => normalizedSrc.value,
   value => {
-    state.value = value ? 'loading' : 'empty';
+    if (!value) {
+      state.value = 'empty';
+    } else if (failedSrc.value === value) {
+      state.value = 'error';
+    } else {
+      state.value = 'loading';
+    }
   }
 );
 </script>

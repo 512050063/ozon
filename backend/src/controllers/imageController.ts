@@ -12,7 +12,7 @@ import {
 import { getImageUploadDir } from '../services/publicAssetUrlService';
 
 const UPLOAD_DIR = getImageUploadDir();
-const ALLOWED_REMOTE_IMAGE_HOST_PATTERN = /(^|\.)ozon(?:ru)?\.(?:ru|cn)$/i;
+const ALLOWED_REMOTE_IMAGE_HOST_PATTERN = /(^|\.)(ozon(?:ru)?\.(?:ru|cn)|alicdn\.com)$/i;
 const MAX_PROXY_IMAGE_BYTES = 8 * 1024 * 1024;
 
 // 确保上传目录存在
@@ -52,6 +52,17 @@ const isAllowedRemoteImageUrl = (value: unknown): value is string => {
   }
 };
 
+const getRemoteImageReferer = (imageUrl: string): string => {
+  try {
+    const parsed = new URL(imageUrl);
+    if (/(^|\.)alicdn\.com$/i.test(parsed.hostname)) {
+      return 'https://detail.1688.com/';
+    }
+  } catch {
+  }
+  return 'https://www.ozon.ru/';
+};
+
 export const proxyRemoteImage = async (req: Request, res: Response) => {
   try {
     const rawUrl = req.query.url;
@@ -68,7 +79,7 @@ export const proxyRemoteImage = async (req: Request, res: Response) => {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Referer': 'https://www.ozon.ru/',
+        'Referer': getRemoteImageReferer(imageUrl),
       },
     });
 
