@@ -59,6 +59,6 @@ assert.match(
 );
 assert.match(
   worker,
-  /if task_type == "type_extract_batch":[\s\S]*return execute_type_extract_batch\(config, payload\)/,
+  /if task_type == "type_extract_batch":[\s\S]*return execute_type_extract_batch\(config, payload, task_id\)/,
   'local worker should support type_extract_batch tasks',
 );

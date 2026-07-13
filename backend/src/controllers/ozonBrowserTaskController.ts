@@ -10,6 +10,7 @@ import {
   getTaskForUser,
   getUserWorkers,
   heartbeat,
+  progressTask,
   refreshWorkerRegistration,
   startTask,
   WorkerIdentity,
@@ -181,6 +182,22 @@ export const workerCompleteTask = async (req: Request, res: Response) => {
     res.json({ success: result.count > 0, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || '完成任务失败' });
+  }
+};
+
+export const workerProgressTask = async (req: Request, res: Response) => {
+  try {
+    const worker = await requireWorker(req, res);
+    if (!worker) return;
+    const taskId = parseTaskId(req.params.id);
+    if (!taskId) {
+      return res.status(400).json({ success: false, message: '任务ID无效' });
+    }
+
+    const result = await progressTask(worker, taskId, req.body?.progress || {});
+    res.json({ success: result.count > 0, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || '更新任务进度失败' });
   }
 };
 

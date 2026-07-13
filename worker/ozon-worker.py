@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -75,6 +76,12 @@ def complete_task(config: dict, task_id: int, result):
     })
 
 
+def progress_task(config: dict, task_id: int, progress):
+    return api_request(config, "POST", f"/api/worker/tasks/{task_id}/progress", {
+        "progress": progress,
+    })
+
+
 def fail_task(config: dict, task_id: int, error_code: str, error_message: str):
     return api_request(config, "POST", f"/api/worker/tasks/{task_id}/fail", {
         "errorCode": error_code,
@@ -94,28 +101,72 @@ def parse_last_json_line(stdout: str):
     return None
 
 
-def run_python_script(config: dict, script: Path, args=None, stdin_body=None) -> dict:
+def run_python_script(config: dict, script: Path, args=None, stdin_body=None, on_json_line=None) -> dict:
     command = [config["pythonPath"], str(script)]
     if args:
         command.extend(str(arg) for arg in args)
-    process = subprocess.run(
+
+    process = subprocess.Popen(
         command,
-        input=stdin_body,
+        stdin=subprocess.PIPE if stdin_body is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        capture_output=True,
         encoding="utf-8",
         errors="replace",
-        timeout=int(config.get("scriptTimeoutSeconds", 600)),
         cwd=str(script.parent),
     )
-    parsed = parse_last_json_line(process.stdout)
+
+    stdout_lines = []
+    stderr_lines = []
+
+    def read_stdout():
+        if not process.stdout:
+            return
+        for line in process.stdout:
+            stdout_lines.append(line)
+            if not on_json_line:
+                continue
+            try:
+                parsed_line = json.loads(line.strip())
+            except Exception:
+                continue
+            on_json_line(parsed_line)
+
+    def read_stderr():
+        if not process.stderr:
+            return
+        for line in process.stderr:
+            stderr_lines.append(line)
+
+    stdout_thread = threading.Thread(target=read_stdout, daemon=True)
+    stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+    stdout_thread.start()
+    stderr_thread.start()
+
+    if stdin_body is not None and process.stdin:
+        process.stdin.write(stdin_body)
+        process.stdin.close()
+
+    try:
+        return_code = process.wait(timeout=int(config.get("scriptTimeoutSeconds", 600)))
+    except subprocess.TimeoutExpired:
+        process.kill()
+        raise RuntimeError(f"script timed out after {config.get('scriptTimeoutSeconds', 600)} seconds")
+
+    stdout_thread.join(timeout=2)
+    stderr_thread.join(timeout=2)
+
+    stdout = "".join(stdout_lines)
+    stderr = "".join(stderr_lines)
+    parsed = parse_last_json_line(stdout)
     result = {
-        "exitCode": process.returncode,
-        "stdout": process.stdout[-20000:],
-        "stderr": process.stderr[-10000:],
+        "exitCode": return_code,
+        "stdout": stdout[-20000:],
+        "stderr": stderr[-10000:],
         "json": parsed,
     }
-    if process.returncode != 0:
+    if return_code != 0:
         raise RuntimeError(result["stderr"] or result["stdout"] or f"script exited with {process.returncode}")
     return result
 
@@ -139,24 +190,30 @@ def execute_product_by_url(config: dict, payload: dict) -> dict:
     return run_python_script(config, script, [url])
 
 
-def execute_type_extract_batch(config: dict, payload: dict) -> dict:
+def execute_type_extract_batch(config: dict, payload: dict, task_id: int) -> dict:
     repo_root = Path(config["repoRoot"]).resolve()
     script = repo_root / "backend" / "scripts" / "ozon" / "ozon_extract_type_batch.py"
     urls = payload.get("urls") or []
     titles = payload.get("titles") or {}
     stdin_body = json.dumps({"urls": urls, "titles": titles}, ensure_ascii=False)
-    return run_python_script(config, script, stdin_body=stdin_body)
+
+    def on_json_line(parsed):
+        if isinstance(parsed, dict) and parsed.get("url"):
+            progress_task(config, task_id, {"results": [parsed]})
+
+    return run_python_script(config, script, stdin_body=stdin_body, on_json_line=on_json_line)
 
 
 def execute_task(config: dict, task: dict) -> dict:
     task_type = task.get("type")
     payload = task.get("payload") or {}
+    task_id = int(task["id"])
     if task_type == "preference_search":
         return execute_preference_search(config, payload)
     if task_type == "product_by_url":
         return execute_product_by_url(config, payload)
     if task_type == "type_extract_batch":
-        return execute_type_extract_batch(config, payload)
+        return execute_type_extract_batch(config, payload, task_id)
     raise ValueError(f"unsupported task type: {task_type}")
 
 

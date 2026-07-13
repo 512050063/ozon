@@ -325,6 +325,47 @@ export const completeTask = async (worker: WorkerIdentity, taskId: number, resul
   return updated;
 };
 
+export const progressTask = async (worker: WorkerIdentity, taskId: number, progress: any) => {
+  const task = await prisma.ozonBrowserTask.findFirst({
+    where: {
+      id: taskId,
+      userId: worker.userId,
+      workerId: worker.id,
+      status: { in: ['claimed', 'running'] },
+    },
+    select: {
+      result: true,
+    },
+  });
+
+  const currentResult = (task?.result || {}) as any;
+  const currentProgressResults = Array.isArray(currentResult.progressResults)
+    ? currentResult.progressResults
+    : [];
+  const incomingResults = Array.isArray(progress?.results) ? progress.results : [];
+  const nextResult = {
+    ...currentResult,
+    progressResults: [
+      ...currentProgressResults,
+      ...incomingResults,
+    ],
+    progressUpdatedAt: new Date().toISOString(),
+  };
+
+  return prisma.ozonBrowserTask.updateMany({
+    where: {
+      id: taskId,
+      userId: worker.userId,
+      workerId: worker.id,
+      status: { in: ['claimed', 'running'] },
+    },
+    data: {
+      result: nextResult as any,
+      expiresAt: new Date(Date.now() + DEFAULT_TASK_TTL_MS),
+    },
+  });
+};
+
 export const failTask = async (
   worker: WorkerIdentity,
   taskId: number,

@@ -182,6 +182,13 @@ const applyTypeResult = (result: ScriptTypeResult): boolean => {
 
 const applyWorkerTypeTaskResult = (result: any): number => {
   let applied = 0;
+  const progressResults = result?.progressResults;
+  if (Array.isArray(progressResults)) {
+    for (const item of progressResults) {
+      if (applyTypeResult(item)) applied++;
+    }
+  }
+
   const stdout = String(result?.stdout || '');
   for (const line of stdout.split('\n')) {
     if (!line.trim()) continue;
@@ -358,6 +365,10 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
 export const getBatchExtractStatus = async () => {
   if (activeWorkerBatchTask && batchRunning) {
     const task = await getTaskForUser(activeWorkerBatchTask.userId, activeWorkerBatchTask.taskId);
+    if (task?.result) {
+      const applied = applyWorkerTypeTaskResult(task.result);
+      if (applied > 0) saveTypeCacheToFile();
+    }
     if (!task || ['failed', 'cancelled', 'expired'].includes(task.status)) {
       batchRunning = false;
       batchStartTime = 0;
@@ -365,7 +376,6 @@ export const getBatchExtractStatus = async () => {
       markPendingTypesAsError(task?.errorMessage || '本机采集器类型任务失败');
       saveTypeCacheToFile();
     } else if (task.status === 'success') {
-      applyWorkerTypeTaskResult(task.result);
       batchRunning = false;
       batchStartTime = 0;
       activeWorkerBatchTask = null;
