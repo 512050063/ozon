@@ -3,6 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import logger from '../config/logger';
 import { updateCachedOzonSearchProductDetails } from './ozonSearchService';
+import {
+  createBrowserTask,
+  getTaskForUser,
+  hasActiveWorkerForUser,
+} from './ozonBrowserTaskService';
 
 // 内存缓存：productUrl → type info
 type TypeInfo = {
@@ -14,6 +19,7 @@ type TypeInfo = {
 };
 
 type ScriptTypeResult = {
+  url?: unknown;
   success?: boolean;
   type?: unknown;
   source?: unknown;
@@ -25,6 +31,7 @@ const typeCache = new Map<string, TypeInfo>();
 let batchRunning = false;  // 标记批量脚本是否正在运行
 let batchStartTime = 0;  // 批量任务开始时间
 let lastTypeCacheSearchSyncAt = 0;
+let activeWorkerBatchTask: { userId: number; taskId: number } | null = null;
 
 // 持久化缓存文件路径
 const SCRIPT_DATA_DIR = path.join(__dirname, '../../scripts/data');
@@ -131,6 +138,7 @@ export const forceResetBatchStatus = (): void => {
   }
   batchRunning = false;
   batchStartTime = 0;
+  activeWorkerBatchTask = null;
 };
 
 /**
@@ -157,7 +165,56 @@ export const getCachedType = (productUrl: string): TypeInfo | undefined => {
  * 批量提取商品类型（异步，不阻塞调用方）
  * 使用批量脚本一次启动Chrome处理所有URL，速度提升2-3倍
  */
-export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<string, string> = {}): Promise<{ total: number; started: boolean }> => {
+const shouldUseLocalWorker = () => process.env.OZON_BROWSER_WORKER_MODE === 'required';
+
+const applyTypeResult = (result: ScriptTypeResult): boolean => {
+  const url = String(result.url || '').trim();
+  if (!url) return false;
+  const normalizedResult = normalizeTypeExtractionResult(result);
+  typeCache.set(url, normalizedResult);
+  updateCachedOzonSearchProductDetails(url, {
+    title: normalizedResult.title,
+    productType: normalizedResult.type,
+  });
+  logger.info(`[批量] ${url} -> ${normalizedResult.type || '(无)'} [${normalizedResult.source || '未知'}]`);
+  return true;
+};
+
+const applyWorkerTypeTaskResult = (result: any): number => {
+  let applied = 0;
+  const stdout = String(result?.stdout || '');
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const parsed = JSON.parse(line);
+      if (applyTypeResult(parsed)) applied++;
+    } catch {
+      // 忽略进度输出
+    }
+  }
+
+  const jsonResults = result?.json?.results;
+  if (Array.isArray(jsonResults)) {
+    for (const item of jsonResults) {
+      if (applyTypeResult(item)) applied++;
+    }
+  }
+  return applied;
+};
+
+const markPendingTypesAsError = (message: string) => {
+  for (const [url, info] of typeCache.entries()) {
+    if (info.status !== 'pending') continue;
+    typeCache.set(url, {
+      type: '',
+      source: '',
+      status: 'error',
+      message,
+    });
+  }
+};
+
+export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<string, string> = {}, userId?: number): Promise<{ total: number; started: boolean }> => {
   if (!urls || urls.length === 0) {
     return { total: 0, started: false };
   }
@@ -180,6 +237,7 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
   clearTypeCache();
   batchRunning = true;
   batchStartTime = Date.now();  // 记录开始时间
+  activeWorkerBatchTask = null;
   const total = urls.length;
   
   logger.info(`开始批量提取类型，共 ${total} 个商品（批量模式）`);
@@ -187,6 +245,33 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
   // 标记所有为 pending
   for (const url of urls) {
     typeCache.set(url, { type: '', source: '', status: 'pending' });
+  }
+
+  if (shouldUseLocalWorker()) {
+    if (!userId) {
+      batchRunning = false;
+      markPendingTypesAsError('当前登录状态无效，无法启动本机采集器类型任务');
+      saveTypeCacheToFile();
+      return { total, started: false };
+    }
+
+    if (!(await hasActiveWorkerForUser(userId))) {
+      batchRunning = false;
+      markPendingTypesAsError('本机采集器未在线，无法获取商品类型');
+      saveTypeCacheToFile();
+      return { total, started: false };
+    }
+
+    const task = await createBrowserTask(userId, {
+      type: 'type_extract_batch',
+      payload: { urls, titles: fallbackTitles },
+      priority: 6,
+      ttlMs: 20 * 60 * 1000,
+    });
+    activeWorkerBatchTask = { userId, taskId: task.id };
+    saveTypeCacheToFile();
+    logger.info(`已创建本机采集器类型提取任务: ${task.id}, URL数量: ${urls.length}`);
+    return { total, started: true };
   }
 
   // 异步执行批量脚本
@@ -222,13 +307,7 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
           try {
             const result = JSON.parse(line);
             if (result.url && result.type !== undefined) {
-              const normalizedResult = normalizeTypeExtractionResult(result);
-              typeCache.set(result.url, normalizedResult);
-              updateCachedOzonSearchProductDetails(result.url, {
-                title: normalizedResult.title,
-                productType: normalizedResult.type,
-              });
-              logger.info(`[批量] ${result.url} -> ${result.type || '(无)'} [${result.source || '未知'}]`);
+              applyTypeResult(result);
               // 每提取到一条结果就立即写入持久化文件
               saveTypeCacheToFile();
             }
@@ -276,7 +355,24 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
 /**
  * 获取批量提取状态
  */
-export const getBatchExtractStatus = () => {
+export const getBatchExtractStatus = async () => {
+  if (activeWorkerBatchTask && batchRunning) {
+    const task = await getTaskForUser(activeWorkerBatchTask.userId, activeWorkerBatchTask.taskId);
+    if (!task || ['failed', 'cancelled', 'expired'].includes(task.status)) {
+      batchRunning = false;
+      batchStartTime = 0;
+      activeWorkerBatchTask = null;
+      markPendingTypesAsError(task?.errorMessage || '本机采集器类型任务失败');
+      saveTypeCacheToFile();
+    } else if (task.status === 'success') {
+      applyWorkerTypeTaskResult(task.result);
+      batchRunning = false;
+      batchStartTime = 0;
+      activeWorkerBatchTask = null;
+      saveTypeCacheToFile();
+    }
+  }
+
   syncSearchCachesFromTypeCache();
   const total = typeCache.size;
   let done = 0;
@@ -306,14 +402,14 @@ export const getBatchExtractStatus = () => {
 /**
  * 提取单个商品类型（兼容旧接口，内部也走批量逻辑）
  */
-export const extractProductType = async (productUrl: string): Promise<{type: string, source: string, title?: string}> => {
+export const extractProductType = async (productUrl: string, userId?: number): Promise<{type: string, source: string, title?: string}> => {
   const cached = getCachedType(productUrl);
   if (cached && cached.status === 'done') {
     return { type: cached.type, source: cached.source, title: cached.title };
   }
 
   // 单个提取也走批量脚本
-  const result = await batchExtractTypes([productUrl]);
+  const result = await batchExtractTypes([productUrl], {}, userId);
   if (!result.started) {
     return { type: '', source: '', title: '' };
   }

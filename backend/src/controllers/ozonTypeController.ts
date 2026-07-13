@@ -35,7 +35,7 @@ export const extractProductType = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await ozonTypeService.extractProductType(productUrl);
+    const result = await ozonTypeService.extractProductType(productUrl, req.user!.id);
 
     return res.json({
       success: true,
@@ -64,7 +64,7 @@ export const batchExtractTypes = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await ozonTypeService.batchExtractTypes(urls, titles || {});
+    const result = await ozonTypeService.batchExtractTypes(urls, titles || {}, req.user!.id);
 
     return res.json({
       success: true,
@@ -85,7 +85,7 @@ export const batchExtractTypes = async (req: Request, res: Response) => {
  */
 export const getBatchStatus = async (req: Request, res: Response) => {
   try {
-    const status = ozonTypeService.getBatchExtractStatus();
+    const status = await ozonTypeService.getBatchExtractStatus();
     return res.json({
       success: true,
       ...status,

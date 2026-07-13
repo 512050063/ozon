@@ -41,6 +41,16 @@ def has_graphic_display() -> bool:
     return bool(os.environ.get('DISPLAY'))
 
 
+def should_retry_headed(error: Exception) -> bool:
+    message = str(error)
+    return has_graphic_display() and (
+        'Ozon返回错误页' in message
+        or 'captcha' in message.lower()
+        or 'challenge' in message.lower()
+        or 'нет соединения' in message
+    )
+
+
 def load_cookies() -> Optional[dict]:
     if not os.path.exists(COOKIE_FILE):
         log(f"[X] 未找到 {COOKIE_FILE}")
@@ -123,8 +133,9 @@ def extract_products(page, max_count: int = 0) -> list:
         const deliveryPattern = /^(\\d+\\s*分钟内|一小时内|\\d+\\s*小时内|今天|明天|后天|[一二三四五六七]月\\d{1,2}日)/;
         const skipTokens = new Set([
             '降价了', '就是这个价', '剩余数量', '还剩',
-            '明天', '后天', '今天', '大促销', '广告', '前往描述'
+            '明天', '后天', '今天', '广告', '前往描述'
         ]);
+        const badTitlePattern = /(大促销|评价积分|哇-价格|本周折扣|剩余数量|降价|就是这个价)|^[−-]?\d+%$/;
         const pricePattern = /^(?:¥\\s*)?[\\d\\s\\u00a0\\u202f,.]+\\s*¥?$/;
         const skipPattern = /^-?\\d+%$|^[1-5][.,]\\d$|^[\\d,]+\\s*[xa0\\xa0]*评价$/;
 
@@ -171,6 +182,7 @@ def extract_products(page, max_count: int = 0) -> list:
             if (text.length < 2) return false;
             if (text.length > 180) return false;
             if (skipTokens.has(text)) return false;
+            if (badTitlePattern.test(text)) return false;
             if (pricePattern.test(text) || text.includes('¥')) return false;
             if (skipPattern.test(text)) return false;
             if (deliveryPattern.test(text)) return false;
@@ -240,17 +252,33 @@ def extract_products(page, max_count: int = 0) -> list:
                 originalPrice = deriveOriginalPrice(currentPrice, originalMatch ? originalMatch.raw : '', discount);
             }
 
+            const combinedText = normalizeSpaces(texts.join(' '));
+
             // ── 评分 ──
             let rating = '';
             for (const t of texts) {
-                if (/^[1-5][.,]\\d$/.test(t)) { rating = t.replace(',', '.'); break; }
+                const text = normalizeSpaces(t);
+                if (/^[1-5][.,]\\d$/.test(text)) { rating = text.replace(',', '.'); break; }
+            }
+            if (!rating) {
+                const ratingMatch = combinedText.match(/(?:^|[^\\d])([1-5][.,]\\d)(?=\\s*(?:\\d|评价|评论|отзыв|отзыва|отзывов|reviews?|\\b))/i);
+                if (ratingMatch) rating = ratingMatch[1].replace(',', '.');
             }
 
             // ── 评论数 ──
             let reviewCount = '';
-            for (const t of texts) {
-                const m = t.match(/^([\\d,]+)\\s*[xa0\\xa0\\s]*评价/);
-                if (m) { reviewCount = m[1].replace(',', ''); break; }
+            const reviewSource = combinedText.replace(/\\b[1-5][.,]\\d\\b/g, ' ');
+            const reviewMatches = Array.from(reviewSource.matchAll(/([\\d\\s\\u00a0\\u202f,.]+)\\s*(?:评价|评论|отзыв|отзыва|отзывов|reviews?)/gi));
+            if (reviewMatches.length) {
+                const nearest = reviewMatches[reviewMatches.length - 1][1];
+                reviewCount = nearest.replace(/[^\\d]/g, '');
+            }
+            if (!reviewCount) {
+                for (const t of texts) {
+                    const text = normalizeSpaces(t);
+                    const m = text.match(/([\\d\\s\\u00a0\\u202f,.]+)\\s*(?:评价|评论|отзыв|отзыва|отзывов|reviews?)/i);
+                    if (m) { reviewCount = m[1].replace(/[^\\d]/g, ''); break; }
+                }
             }
 
             // ── 库存 ──
@@ -422,7 +450,7 @@ def collect_products_from_pages(page, search_url: str, products: list, max_count
     return products
 
 
-def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = '', search_text_override: str = '') -> list:
+def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = '', search_text_override: str = '', headless_mode: bool = True) -> list:
     """启动浏览器 -> 注入 cookie -> 搜索 -> 提取"""
     log("[1] 启动浏览器...")
 
@@ -439,7 +467,6 @@ def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = 
     executable_path = next((p for p in chrome_paths if os.path.exists(p)), None)
 
     with sync_playwright() as p:
-        headless_mode = not has_graphic_display()
         launch_args = {'headless': headless_mode}
         if executable_path:
             launch_args['executable_path'] = executable_path
@@ -546,7 +573,13 @@ def run_once(keyword: str, max_count: int = 0, category: str = '', search_text_o
     cookie_data = load_cookies()
     if not cookie_data:
         return []
-    return search(keyword, cookie_data, max_count, category, search_text_override)
+    try:
+        return search(keyword, cookie_data, max_count, category, search_text_override, headless_mode=True)
+    except Exception as exc:
+        if should_retry_headed(exc):
+            log(f"[WARN] headless 模式被 Ozon 拦截，切换有界面 Chrome 重试: {exc}")
+            return search(keyword, cookie_data, max_count, category, search_text_override, headless_mode=False)
+        raise
 
 
 if __name__ == '__main__':

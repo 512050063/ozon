@@ -50,6 +50,16 @@ def has_graphic_display() -> bool:
     return bool(os.environ.get('DISPLAY'))
 
 
+def should_retry_headed(error: Exception) -> bool:
+    message = str(error)
+    return has_graphic_display() and (
+        'Ozon返回错误页' in message
+        or 'captcha' in message.lower()
+        or 'challenge' in message.lower()
+        or 'нет соединения' in message
+    )
+
+
 def load_cookie_data() -> Optional[dict]:
     if not os.path.exists(COOKIE_FILE):
         print_json({
@@ -484,7 +494,7 @@ def should_reload_for_currency(page, local_storage: dict) -> bool:
         return False
 
 
-def fetch_product(product_url: str, cookie_data: dict) -> dict:
+def fetch_product(product_url: str, cookie_data: dict, headless_mode: bool = True) -> dict:
     chrome_paths = [
         os.environ.get('CHROME_PATH', ''),
         '/usr/bin/google-chrome',
@@ -498,7 +508,6 @@ def fetch_product(product_url: str, cookie_data: dict) -> dict:
     executable_path = next((p for p in chrome_paths if os.path.exists(p)), None)
 
     with sync_playwright() as p:
-        headless_mode = not has_graphic_display()
         launch_args = {'headless': headless_mode}
         if executable_path:
             launch_args['executable_path'] = executable_path
@@ -595,7 +604,13 @@ if __name__ == '__main__':
         sys.exit(1)
 
     try:
-        product = fetch_product(url, cookie_data)
+        try:
+            product = fetch_product(url, cookie_data, headless_mode=True)
+        except Exception as exc:
+            if not should_retry_headed(exc):
+                raise
+            print(f"[WARN] headless 模式被 Ozon 拦截，切换有界面 Chrome 重试: {exc}", file=sys.stderr)
+            product = fetch_product(url, cookie_data, headless_mode=False)
         print_json({'success': True, 'product': product})
     except Exception as exc:
         print_json({'success': False, 'message': str(exc)})

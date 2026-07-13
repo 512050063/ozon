@@ -49,6 +49,17 @@ def has_graphic_display():
     return bool(os.environ.get('DISPLAY'))
 
 
+def should_retry_headed(error: Exception):
+    message = str(error)
+    return has_graphic_display() and (
+        'Ozon返回错误页' in message
+        or 'captcha' in message.lower()
+        or 'challenge' in message.lower()
+        or 'нет соединения' in message
+        or 'No connection' in message
+    )
+
+
 def normalize_product_url(product_url):
     try:
         parsed = urlsplit(product_url)
@@ -204,6 +215,110 @@ def extract_type(page, product_url, fallback_title=''):
     return {'title': title, 'type': final_type, 'source': source, 'breadcrumb': breadcrumb}
 
 
+def run_batch(urls, fallback_titles, cookie_data, headless_mode: bool = True):
+    total = len(urls)
+    results = []
+
+    # 启动浏览器
+    chrome_paths = [
+        os.environ.get('CHROME_PATH', ''),
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+        r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+        os.path.expanduser(r'~\AppData\Local\Google\Chrome\Application\chrome.exe'),
+    ]
+    executable_path = next((p for p in chrome_paths if os.path.exists(p)), None)
+
+    with sync_playwright() as p:
+        launch_args = {'headless': headless_mode}
+        if executable_path:
+            launch_args['executable_path'] = executable_path
+            chrome_args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+            ]
+            if headless_mode:
+                chrome_args.append('--headless=new')
+            launch_args['args'] = chrome_args
+
+        browser = p.chromium.launch(**launch_args)
+        context = browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+        )
+        context.add_cookies(cookie_data.get('cookies', []))
+        print(f"[1] 已注入 {len(cookie_data.get('cookies', []))} 条 cookies", file=sys.stderr)
+
+        page = context.new_page()
+
+        # 注入 localStorage
+        ls = cookie_data.get('local_storage', {})
+        if ls:
+            page.goto('https://www.ozon.ru/', wait_until='domcontentloaded', timeout=30000)
+            page.evaluate(
+                "(d) => { for(const k in d){ localStorage.setItem(k, d[k]); } }", ls
+            )
+            print(f"[2] 已注入 {len(ls)} 条 localStorage", file=sys.stderr)
+
+        print(f"[OK] 浏览器就绪，开始批量提取 {total} 个商品\n", file=sys.stderr)
+
+        for idx, url in enumerate(urls):
+            try:
+                print(f"[{idx+1}/{total}] 提取: {url[:60]}...", file=sys.stderr)
+
+                fallback_title = fallback_titles.get(url) or fallback_titles.get(normalize_product_url(url)) or ''
+                result_data = extract_type(page, url, fallback_title)
+
+                has_type = bool(str(result_data.get('type') or '').strip())
+                item = {
+                    'url': url,
+                    'success': has_type,
+                    'type': result_data['type'],
+                    'source': result_data['source'],
+                    'title': result_data['title'],
+                    'message': '提取成功' if has_type else '未获取到商品类型'
+                }
+                results.append(item)
+
+                print(json.dumps(item, ensure_ascii=False))
+                sys.stdout.flush()
+
+                print(f"    -> {result_data['type']} [{result_data['source']}]", file=sys.stderr)
+
+            except Exception as e:
+                item = {
+                    'url': url,
+                    'success': False,
+                    'type': '',
+                    'source': '',
+                    'title': '',
+                    'message': str(e)
+                }
+                results.append(item)
+                print(json.dumps(item, ensure_ascii=False))
+                sys.stdout.flush()
+                print(f"    [X] 错误: {e}", file=sys.stderr)
+
+        browser.close()
+
+    final = {
+        'success': True,
+        'total': total,
+        'done': sum(1 for r in results if r.get('success')),
+        'error': sum(1 for r in results if not r.get('success')),
+        'results': results
+    }
+    with open(RESULT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(final, f, ensure_ascii=False, indent=2)
+
+    print(f"\n[OK] 全部完成: {final['done']}/{total}", file=sys.stderr)
+    return final
+
+
 def main():
     # 获取 URL 列表
     urls = []
@@ -241,113 +356,19 @@ def main():
         print(json.dumps(result, ensure_ascii=False))
         return
 
-    total = len(urls)
-    results = []
-
-    # 启动浏览器
-    chrome_paths = [
-        os.environ.get('CHROME_PATH', ''),
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/chromium',
-        '/usr/bin/chromium-browser',
-        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-        r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-        os.path.expanduser(r'~\AppData\Local\Google\Chrome\Application\chrome.exe'),
-    ]
-    executable_path = next((p for p in chrome_paths if os.path.exists(p)), None)
-
     try:
-        with sync_playwright() as p:
-            headless_mode = not has_graphic_display()
-            launch_args = {'headless': headless_mode}
-            if executable_path:
-                launch_args['executable_path'] = executable_path
-                chrome_args = [
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                ]
-                if headless_mode:
-                    chrome_args.append('--headless=new')
-                launch_args['args'] = chrome_args
-
-            browser = p.chromium.launch(**launch_args)
-            context = browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-            )
-            context.add_cookies(cookie_data.get('cookies', []))
-            print(f"[1] 已注入 {len(cookie_data.get('cookies', []))} 条 cookies", file=sys.stderr)
-
-            page = context.new_page()
-
-            # 注入 localStorage
-            ls = cookie_data.get('local_storage', {})
-            if ls:
-                page.goto('https://www.ozon.ru/', wait_until='domcontentloaded', timeout=30000)
-                page.evaluate(
-                    "(d) => { for(const k in d){ localStorage.setItem(k, d[k]); } }", ls
-                )
-                print(f"[2] 已注入 {len(ls)} 条 localStorage", file=sys.stderr)
-
-            print(f"[OK] 浏览器就绪，开始批量提取 {total} 个商品\n", file=sys.stderr)
-
-            for idx, url in enumerate(urls):
-                try:
-                    print(f"[{idx+1}/{total}] 提取: {url[:60]}...", file=sys.stderr)
-                    
-                    fallback_title = fallback_titles.get(url) or fallback_titles.get(normalize_product_url(url)) or ''
-                    result_data = extract_type(page, url, fallback_title)
-                    
-                    has_type = bool(str(result_data.get('type') or '').strip())
-                    item = {
-                        'url': url,
-                        'success': has_type,
-                        'type': result_data['type'],
-                        'source': result_data['source'],
-                        'title': result_data['title'],
-                        'message': '提取成功' if has_type else '未获取到商品类型'
-                    }
-                    results.append(item)
-                    
-                    print(json.dumps(item, ensure_ascii=False))
-                    sys.stdout.flush()
-                    
-                    print(f"    -> {result_data['type']} [{result_data['source']}]", file=sys.stderr)
-                    
-                except Exception as e:
-                    item = {
-                        'url': url,
-                        'success': False,
-                        'type': '',
-                        'source': '',
-                        'title': '',
-                        'message': str(e)
-                    }
-                    results.append(item)
-                    print(json.dumps(item, ensure_ascii=False))
-                    sys.stdout.flush()
-                    print(f"    [X] 错误: {e}", file=sys.stderr)
-
-            browser.close()
-
-        # 保存完整结果
-        final = {
-            'success': True,
-            'total': total,
-            'done': sum(1 for r in results if r.get('success')),
-            'error': sum(1 for r in results if not r.get('success')),
-            'results': results
-        }
-        with open(RESULT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(final, f, ensure_ascii=False, indent=2)
-        
-        print(f"\n[OK] 全部完成: {final['done']}/{total}", file=sys.stderr)
+        run_batch(urls, fallback_titles, cookie_data, headless_mode=True)
 
     except Exception as e:
+        if should_retry_headed(e):
+            print(f"[WARN] headless 模式被 Ozon 拦截，切换有界面 Chrome 重试: {e}", file=sys.stderr)
+            try:
+                run_batch(urls, fallback_titles, cookie_data, headless_mode=False)
+                return
+            except Exception as retry_error:
+                e = retry_error
         print(f"\n[X] 致命错误: {e}", file=sys.stderr)
-        err_result = {'success': False, 'total': total, 'results': results, 'message': str(e)}
+        err_result = {'success': False, 'total': len(urls), 'results': [], 'message': str(e)}
         print(json.dumps(err_result, ensure_ascii=False))
 
 

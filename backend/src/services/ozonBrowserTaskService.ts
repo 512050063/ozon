@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import prisma from '../config/database';
+import { saveOzonSearchCacheFromWorkerResult } from './ozonSearchService';
 
 const WORKER_TOKEN_PREFIX = 'owk_';
 const DEFAULT_TASK_TTL_MS = 15 * 60 * 1000;
@@ -287,7 +288,20 @@ export const startTask = async (worker: WorkerIdentity, taskId: number) => {
 };
 
 export const completeTask = async (worker: WorkerIdentity, taskId: number, result: unknown) => {
-  return prisma.ozonBrowserTask.updateMany({
+  const task = await prisma.ozonBrowserTask.findFirst({
+    where: {
+      id: taskId,
+      userId: worker.userId,
+      workerId: worker.id,
+      status: { in: ['claimed', 'running'] },
+    },
+    select: {
+      type: true,
+      payload: true,
+    },
+  });
+
+  const updated = await prisma.ozonBrowserTask.updateMany({
     where: {
       id: taskId,
       userId: worker.userId,
@@ -302,6 +316,13 @@ export const completeTask = async (worker: WorkerIdentity, taskId: number, resul
       finishedAt: new Date(),
     },
   });
+
+  if (updated.count > 0 && task?.type === 'preference_search') {
+    const keyword = String((task.payload as any)?.keyword || '').trim();
+    saveOzonSearchCacheFromWorkerResult(keyword, result);
+  }
+
+  return updated;
 };
 
 export const failTask = async (

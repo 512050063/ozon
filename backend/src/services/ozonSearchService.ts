@@ -149,7 +149,9 @@ function hasMeaningfulTitle(title: unknown): title is string {
   const value = String(title || '').trim();
   return value.length > 1 &&
     !DELIVERY_TITLE_PATTERN.test(value) &&
-    !/^(本周折扣|还剩\d+件?|[\d\s]+评价积分)$/.test(value);
+    !/(大促销|评价积分|哇-价格|本周折扣|剩余数量|降价|就是这个价)/.test(value) &&
+    !/^[−-]?\d+%$/.test(value) &&
+    !/^(还剩\d+件?|[\d\s]+评价积分)$/.test(value);
 }
 
 function updateProductsInCacheFile(
@@ -374,6 +376,34 @@ function saveCache(keyword: string, products: OzonSearchProduct[]): void {
   } catch (err) {
     logger.warn(`保存缓存失败: ${err}`);
   }
+}
+
+function normalizeRawProducts(items: any[] = []): OzonSearchProduct[] {
+  return items.map((item: any) => ({
+    sku: item.sku || '',
+    link: item.link || item.productUrl || '',
+    thumbnail: item.thumbnail || '',
+    mainImage: item.main_image || item.mainImage || '',
+    title: item.title || item.name || '',
+    productType: item.productType || item.product_type || '',
+    price: item.price || '',
+    originalPrice: item.original_price || item.originalPrice || '',
+    discount: item.discount || '',
+    rating: item.rating || '',
+    reviewCount: item.review_count || item.reviewCount || '',
+    stock: item.stock || ''
+  }));
+}
+
+export function saveOzonSearchCacheFromWorkerResult(keyword: string, result: any): number {
+  const json = result?.json || result;
+  const products = json?.products || json?.data || [];
+  if (!keyword || !Array.isArray(products) || products.length === 0) {
+    return 0;
+  }
+  const normalized = normalizeRawProducts(products);
+  saveCache(keyword, normalized);
+  return normalized.length;
 }
 
 /**
