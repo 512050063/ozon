@@ -4,7 +4,6 @@ import { ElMessage } from 'element-plus';
 
 const resolvedProductNameTranslations = new Map<string, string>();
 const pendingProductNameTranslations = new Set<string>();
-const warningShown = ref(false);
 const quotaWarningShown = ref(false);
 const translationVersion = ref(0);
 
@@ -41,11 +40,6 @@ export function useProductNameTranslations() {
       }
       if (changed) {
         translationVersion.value += 1;
-      }
-
-      if (response.data.translationConfigured === false && !warningShown.value) {
-        warningShown.value = true;
-        ElMessage.warning('未配置翻译 API，商品名称将暂时显示原文');
       }
 
       if (response.data.quotaExceeded && !quotaWarningShown.value) {
