@@ -7,7 +7,7 @@
     class="similar-products-drawer"
     body-class="similar-products-drawer-body"
   >
-    <template #title>
+    <template #header>
       <div class="app-surface-header app-surface-header--drawer">
         <div class="app-surface-icon">
           <el-icon class="text-blue-600 text-lg"><Search /></el-icon>
@@ -269,10 +269,30 @@ const carouselIndexes = ref<Map<string, number>>(new Map());
 
 // 获取轮播图片
 const getCarouselImages = (product: any): string[] => {
-  if (product.images && product.images.length > 0) return product.images;
-  if (product.imgUrl) return [product.imgUrl];
-  if (product.primaryImage) return [product.primaryImage];
-  return [];
+  const images: string[] = [];
+  const push = (value: unknown) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach(push);
+      return;
+    }
+    const url = typeof value === 'object'
+      ? String((value as any).url || (value as any).imageUrl || (value as any).image_url || '')
+      : String(value || '');
+    if (url && !images.includes(url)) images.push(url);
+  };
+  push(product.images);
+  push(product.imageList);
+  push(product.offerImage?.images);
+  push(product.imageInfo?.images);
+  push(product.imgUrl);
+  push(product.primaryImage);
+  push(product.image);
+  push(product.image_url);
+  push(product.imageUrl);
+  push(product.offerImage?.imageUrl);
+  push(product.imageInfo?.imageUrl);
+  return images;
 };
 
 // 获取轮播索引

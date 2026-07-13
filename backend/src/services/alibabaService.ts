@@ -573,25 +573,42 @@ function parseProductList(items: any[]): any[] {
 
     // 辅助：把一个值推入 allImages（去重）
     const pushImg = (v: any) => {
-      const s = typeof v === 'object' ? (v?.url || v?.imageUrl || '') : String(v || '');
+      const s = typeof v === 'object'
+        ? (v?.url || v?.imageUrl || v?.image_url || v?.imgUrl || v?.src || '')
+        : String(v || '');
       if (s && !allImages.includes(s)) allImages.push(s);
     };
 
     // 公开图搜直接返回 image 字符串
-    if (typeof p.image === 'string' && p.image) {
-      imageUrl = p.image;
-      pushImg(p.image);
+    const directImageCandidates = [
+      p.image,
+      p.image_url,
+      p.imageUrl,
+      p.imgUrl,
+      p.mainImage,
+      p.main_image,
+      p.primaryImage,
+      p.picUrl,
+      p.pic_url,
+      p.thumbnail,
+    ];
+    for (const imageCandidate of directImageCandidates) {
+      if (typeof imageCandidate === 'string' && imageCandidate.trim()) {
+        imageUrl = imageCandidate.trim();
+        pushImg(imageUrl);
+        break;
+      }
     }
     // offerImage / imageInfo 对象结构（通常只有一张）
     if (!imageUrl) {
       const imgInfo = p.offerImage || p.imageInfo || {};
       if (typeof imgInfo === 'object') {
-        imageUrl = imgInfo.imageUrl || imgInfo.url || '';
+        imageUrl = imgInfo.imageUrl || imgInfo.image_url || imgInfo.url || imgInfo.imgUrl || '';
         if (imageUrl) pushImg(imageUrl);
       }
     }
     // images / imageList 数组结构（多张主图）
-    const rawImgs = p.images || p.imageList || [];
+    const rawImgs = p.images || p.imageList || p.imageUrls || p.image_urls || p.picUrls || [];
     if (Array.isArray(rawImgs) && rawImgs.length > 0) {
       if (!imageUrl) {
         const img0 = rawImgs[0];
@@ -1242,6 +1259,61 @@ export async function batchGetAlibabaProducts(userId: number, productIds: string
   }
 }
 
+const MAX_IMAGE_SEARCH_BYTES = 8 * 1024 * 1024;
+
+const normalizeImageSearchUrl = (value?: string): string => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw, 'http://localhost');
+    if (parsed.pathname === '/api/images/proxy') {
+      return parsed.searchParams.get('url') || raw;
+    }
+  } catch {
+  }
+  return raw;
+};
+
+const getImageFetchReferer = (imageUrl: string): string => {
+  try {
+    const parsed = new URL(imageUrl);
+    if (/(^|\.)alicdn\.com$/i.test(parsed.hostname)) return 'https://detail.1688.com/';
+  } catch {
+  }
+  return 'https://www.ozon.ru/';
+};
+
+const fetchImageAsBase64 = async (imageUrl: string): Promise<string> => {
+  const normalizedUrl = normalizeImageSearchUrl(imageUrl);
+  const parsed = new URL(normalizedUrl);
+  if (!/^https?:$/.test(parsed.protocol)) {
+    throw new Error('图片地址不是有效的公网URL');
+  }
+  const response = await fetch(normalizedUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Referer': getImageFetchReferer(normalizedUrl),
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`图片下载失败: HTTP ${response.status}`);
+  }
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType && !contentType.startsWith('image/')) {
+    throw new Error('远程地址不是图片');
+  }
+  const contentLength = Number(response.headers.get('content-length') || 0);
+  if (contentLength > MAX_IMAGE_SEARCH_BYTES) {
+    throw new Error('图片过大');
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_IMAGE_SEARCH_BYTES) {
+    throw new Error('图片过大');
+  }
+  return Buffer.from(arrayBuffer).toString('base64');
+};
+
 /**
  * 搜同款 - 基于图片URL搜索同款商品
  * 对齐Python参考项目 _sdk_image_search：使用 ProductSearchImageQueryBasicParam
@@ -1257,7 +1329,8 @@ export async function searchSimilarProductsByImage(
   pageSize: number = 20
 ): Promise<any> {
   try {
-    logger.info(`搜同款: imageUrl=${imageUrl}, page=${page}, pageSize=${pageSize}`);
+    const normalizedImageUrl = normalizeImageSearchUrl(imageUrl);
+    logger.info(`搜同款: imageUrl=${normalizedImageUrl}, page=${page}, pageSize=${pageSize}`);
 
     const token = await loadToken(userId);
 
@@ -1269,7 +1342,7 @@ export async function searchSimilarProductsByImage(
       };
     }
 
-    if (!imageUrl && !imageBase64) {
+    if (!normalizedImageUrl && !imageBase64) {
       return {
         success: false,
         message: '请提供图片URL或Base64数据',
@@ -1281,7 +1354,7 @@ export async function searchSimilarProductsByImage(
       // === 对齐原项目：使用 imageQueryBasic + searchParam + imageAddress ===
       const imagePayload: Record<string, any> = { beginPage: page, pageSize };
       // 原项目用的是 imageAddress，不是 imageUrl
-      if (imageUrl) imagePayload.imageAddress = imageUrl;
+      if (normalizedImageUrl) imagePayload.imageAddress = normalizedImageUrl;
       if (imageBase64) imagePayload.imgBase64 = imageBase64;
 
       // 对齐SDK: need_timestamp=false, 不需要 _aop_timestamp
@@ -1344,6 +1417,50 @@ export async function searchSimilarProductsByImage(
       };
     } catch (e: any) {
       logger.warn(`跨境图搜失败，降级到公开图搜接口: ${e.message}`);
+      if (normalizedImageUrl && !imageBase64) {
+        try {
+          logger.warn('[image-search] URL图搜失败，尝试下载图片并使用Base64重试跨境图搜');
+          const retryBase64 = await fetchImageAsBase64(normalizedImageUrl);
+          const retryPayload: Record<string, any> = {
+            beginPage: page,
+            pageSize,
+            imgBase64: retryBase64,
+          };
+          const retryData = await call1688Api(
+            userId,
+            'com.alibaba.fenxiao.crossborder',
+            'product.search.imageQueryBasic',
+            {
+              searchParam: JSON.stringify(retryPayload),
+              access_token: token.access_token,
+            }
+          );
+          const retryResultInfo = retryData.result || {};
+          const retryCode = String(retryResultInfo.code || '');
+          const retrySuccess = retryResultInfo.success === true && (retryCode === '200' || retryCode === 'SUCCESS');
+          if (!retrySuccess) {
+            const retryMsg = retryResultInfo.message || retryResultInfo.msg || retryResultInfo.sub_msg || '未知错误';
+            throw new Error(`Base64图搜API返回错误: code=${retryCode || 'unknown'}, msg=${retryMsg}`);
+          }
+          const retryInner = retryResultInfo.result || {};
+          const retryProductsRaw = Array.isArray(retryInner)
+            ? retryInner
+            : (Array.isArray(retryInner.result) ? retryInner.result : []);
+          const retryTotal = Array.isArray(retryInner) ? retryProductsRaw.length : (retryInner.totalRecords || retryProductsRaw.length);
+          if (retryProductsRaw.length > 0) {
+            let retryItems = parseProductList(retryProductsRaw);
+            retryItems = await enrichProductsWithDetail(userId, retryItems);
+            return {
+              success: true,
+              message: '搜同款成功（Base64重试）',
+              data: { items: retryItems, total: retryTotal, page, pageSize }
+            };
+          }
+          throw new Error('Base64图搜返回空数据');
+        } catch (retryError: any) {
+          logger.warn(`[image-search] Base64重试失败: ${retryError.message}`);
+        }
+      }
       // 降级到公开图片相似搜接口
       let fallbackError = '';
       try {
@@ -1351,7 +1468,7 @@ export async function searchSimilarProductsByImage(
           access_token: token.access_token,
         };
         // 公开图搜参数是扁平的，字段名是 imgUrl（不是 imageUrl）
-        if (imageUrl) params2.imgUrl = imageUrl;
+        if (normalizedImageUrl) params2.imgUrl = normalizedImageUrl;
         if (imageBase64) params2.imgBase64 = imageBase64;
 
         const data2 = await call1688Api(

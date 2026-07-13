@@ -390,7 +390,7 @@ async function loadNextSimilarPage() {
   const nextPage = currentSimilarPage.value + 1;
   try {
     const result = similarSearchMode.value === 'image'
-      ? await alibabaAPI.searchByImage(similarImageUrl.value, undefined, nextPage, 40)
+      ? await alibabaAPI.searchByImage(unwrapDisplayImageUrl(similarImageUrl.value), undefined, nextPage, 40)
       : await alibabaAPI.searchSimilar(similarUsedKeyword.value, nextPage, 40);
     if (result.success && result.data && result.data.items && result.data.items.length > 0) {
       similarProducts.value = similarProducts.value.concat(result.data.items);
@@ -691,6 +691,19 @@ const mergeProductImages = (...groups: Array<unknown>): string[] => {
   return images;
 };
 
+const unwrapDisplayImageUrl = (value: unknown): string => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw, window.location.origin);
+    if (parsed.pathname === '/api/images/proxy') {
+      return parsed.searchParams.get('url') || raw;
+    }
+  } catch {
+  }
+  return raw;
+};
+
 const loadProductDetailImages = async (product: any): Promise<string[]> => {
   const productId = product.id || product.productId;
   if (!productId) return [];
@@ -763,7 +776,7 @@ const findSameProducts = async (product: any) => {
   drawerTitle.value = '同款商品';
   similarDrawerVisible.value = true;
   // 使用商品图片URL进行图片搜索
-  const imageUrl = product.imageUrl || product.image;
+  const imageUrl = unwrapDisplayImageUrl(product.imageUrl || product.image || product.image_url);
   searchSameProductsByImage(imageUrl);
 };
 // 搜同- 关键词搜索（直接搜商品名，首页后由无限滚动翻页）
@@ -801,23 +814,24 @@ const searchSimilarProducts = async (keyword: string) => {
 };
 // 搜同款-图片搜索（用Ozon商品图片URL）
 const searchSameProductsByImage = async (imageUrl: string) => {
+  const searchImageUrl = unwrapDisplayImageUrl(imageUrl);
   isSearchingSimilar.value = true;
   similarProducts.value = [];
   isMockData.value = false;
   currentSimilarPage.value = 1;
   similarSearchMode.value = 'image';
-  similarImageUrl.value = imageUrl || '';
+  similarImageUrl.value = searchImageUrl || '';
   similarUsedKeyword.value = '';
   hasMoreSimilar.value = false;
   isLoadingMore.value = false;
   startSearchTimer();
   try {
-    if (!imageUrl) {
+    if (!searchImageUrl) {
       ElMessage.warning('商品图片为空，无法进行图片搜索');
       return;
     }
     // 调用1688图片搜索API，直接传入Ozon商品图片URL
-    const result = await alibabaAPI.searchByImage(imageUrl, undefined, 1, 40);
+    const result = await alibabaAPI.searchByImage(searchImageUrl, undefined, 1, 40);
     if (result.success && result.data && result.data.items && result.data.items.length > 0) {
       similarProducts.value = result.data.items;
       const total = result.data.total || result.data.items.length;
