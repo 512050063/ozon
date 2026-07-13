@@ -35,6 +35,12 @@ def log(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
+def has_graphic_display() -> bool:
+    if os.name == 'nt':
+        return True
+    return bool(os.environ.get('DISPLAY'))
+
+
 def load_cookies() -> Optional[dict]:
     if not os.path.exists(COOKIE_FILE):
         log(f"[X] 未找到 {COOKIE_FILE}")
@@ -433,10 +439,18 @@ def search(keyword: str, cookie_data: dict, max_count: int = 0, category: str = 
     executable_path = next((p for p in chrome_paths if os.path.exists(p)), None)
 
     with sync_playwright() as p:
-        launch_args = {'headless': True}
+        headless_mode = not has_graphic_display()
+        launch_args = {'headless': headless_mode}
         if executable_path:
             launch_args['executable_path'] = executable_path
-            launch_args['args'] = ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage']
+            chrome_args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+            ]
+            if headless_mode:
+                chrome_args.append('--headless=new')
+            launch_args['args'] = chrome_args
             log("[1] 使用系统 Chrome")
 
         browser = p.chromium.launch(**launch_args)

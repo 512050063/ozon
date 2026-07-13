@@ -43,6 +43,12 @@ URL_TYPE_KEYWORDS = [
 TRANSIENT_ERROR_TITLES = ['Похоже, нет соединения', 'нет соединения', 'No connection']
 
 
+def has_graphic_display():
+    if os.name == 'nt':
+        return True
+    return bool(os.environ.get('DISPLAY'))
+
+
 def normalize_product_url(product_url):
     try:
         parsed = urlsplit(product_url)
@@ -253,10 +259,18 @@ def main():
 
     try:
         with sync_playwright() as p:
-            launch_args = {'headless': True}
+            headless_mode = not has_graphic_display()
+            launch_args = {'headless': headless_mode}
             if executable_path:
                 launch_args['executable_path'] = executable_path
-                launch_args['args'] = ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage']
+                chrome_args = [
+                    '--no-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-blink-features=AutomationControlled',
+                ]
+                if headless_mode:
+                    chrome_args.append('--headless=new')
+                launch_args['args'] = chrome_args
 
             browser = p.chromium.launch(**launch_args)
             context = browser.new_context(
