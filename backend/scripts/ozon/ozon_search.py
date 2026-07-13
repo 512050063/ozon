@@ -392,7 +392,13 @@ def collect_products_from_pages(page, search_url: str, products: list, max_count
         page.goto(page_url, wait_until='domcontentloaded', timeout=60000)
         page.wait_for_timeout(1200)
 
-        fresh = wait_and_extract_products(page, max_count)
+        try:
+            fresh = wait_and_extract_products(page, max_count)
+        except Exception as exc:
+            if products:
+                log(f"    分页补量失败，保留已获取商品: {exc}")
+                break
+            raise
         products = merge_products(products, fresh, max_count)
         log(f"    分页 {page_no}: 新增 {len(products) - before_len} 个，已收集 {len(products)} 个")
 

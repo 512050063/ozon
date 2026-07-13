@@ -22,6 +22,8 @@ assert.match(service, /authenticateWorkerToken/);
 assert.match(service, /claimNextTask/);
 assert.match(service, /completeTask/);
 assert.match(service, /failTask/);
+assert.match(service, /const normalizeTaskErrorMessage = \(message: string\)/);
+assert.match(service, /errorMessage: normalizeTaskErrorMessage\(errorMessage\)/);
 assert.match(service, /userId:\s*worker\.userId/);
 
 const app = fs.readFileSync(path.join(root, 'backend/src/app.ts'), 'utf8');

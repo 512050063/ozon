@@ -3,6 +3,7 @@ import prisma from '../config/database';
 
 const WORKER_TOKEN_PREFIX = 'owk_';
 const DEFAULT_TASK_TTL_MS = 15 * 60 * 1000;
+const MAX_TASK_ERROR_MESSAGE_LENGTH = 180;
 
 export type OzonBrowserTaskType =
   | 'preference_search'
@@ -35,6 +36,14 @@ const createRawWorkerToken = (): string => {
 const toPublicWorker = (worker: any) => {
   const { tokenHash: _tokenHash, ...publicWorker } = worker;
   return publicWorker;
+};
+
+const normalizeTaskErrorMessage = (message: string) => {
+  const value = String(message || '采集任务失败').trim() || '采集任务失败';
+  if (value.length <= MAX_TASK_ERROR_MESSAGE_LENGTH) {
+    return value;
+  }
+  return `${value.slice(0, MAX_TASK_ERROR_MESSAGE_LENGTH - 1)}…`;
 };
 
 export const createWorkerRegistration = async (userId: number, name: string) => {
@@ -268,7 +277,7 @@ export const failTask = async (
     data: {
       status: 'failed',
       errorCode,
-      errorMessage,
+      errorMessage: normalizeTaskErrorMessage(errorMessage),
       finishedAt: new Date(),
     },
   });
