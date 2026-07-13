@@ -363,7 +363,7 @@
                         </div>
                       </div>
                       <p class="section-desc">
-                        点击更新令牌后，如果本机助手在线，会自动写入配置并启动 worker；否则弹出配置和启动命令供手动运行。
+                        更新令牌会复用当前采集器记录，助手在线时自动写入配置、启动 worker 并刷新状态。
                       </p>
                     </div>
                   </div>
@@ -371,7 +371,7 @@
                   <div class="worker-record-panel">
                     <div class="flex items-center justify-between mb-3">
                       <div class="text-sm font-semibold text-slate-800">采集器记录</div>
-                      <div class="text-xs text-slate-400">只保留正在使用的采集器，多余离线记录可删除。</div>
+                      <div class="text-xs text-slate-400">更新令牌会刷新当前采集器，不会重复新增记录。</div>
                     </div>
                     <div class="grid grid-cols-1 gap-2">
                       <div v-if="isLoadingWorkers" class="text-xs text-slate-400 text-left">正在获取采集器状态...</div>
@@ -852,14 +852,16 @@ const checkLocalAssistant = async (showToast = true) => {
   }
 };
 
-const startLocalWorker = async (config: LocalWorkerConfig) => {
+const startLocalWorker = async (config: LocalWorkerConfig, showToast = true) => {
   isStartingLocalWorker.value = true;
   try {
     const result = await ozonLocalAssistantAPI.startWorker(config);
     localAssistantOnline.value = true;
     localWorkerStatus.value = result;
     await Promise.allSettled([loadOzonWorkers(), checkLocalAssistant(false)]);
-    ElMessage.success(result.running ? '本机采集器已启动' : '采集器配置已写入');
+    if (showToast) {
+      ElMessage.success(result.running ? '本机采集器已启动，状态已刷新' : '采集器配置已写入，状态已刷新');
+    }
     return true;
   } catch (error: any) {
     ElMessage.warning(error.message || '本机助手不可用，请按弹窗手动运行');
@@ -904,14 +906,23 @@ const createOzonWorker = async () => {
     const config = buildWorkerConfig(response.data.token);
     workerConfigSnippet.value = buildWorkerConfigSnippet(config);
     const started = localAssistantOnline.value
-      ? await startLocalWorker(config)
-      : await checkLocalAssistant(false).then(online => online ? startLocalWorker(config) : false);
+      ? await startLocalWorker(config, false)
+      : await checkLocalAssistant(false).then(online => online ? startLocalWorker(config, false) : false);
     if (!started) {
       await tryCopyWorkerConfigSilently();
       showWorkerTokenDialog.value = true;
-      ElMessage.success('采集器令牌已更新，请按弹窗手动启动');
+      await Promise.allSettled([
+        loadOzonWorkers(),
+        checkLocalAssistant(false),
+      ]);
+      ElMessage.success('令牌已更新，已复制配置，请按弹窗手动启动');
+    } else {
+      await Promise.allSettled([
+        loadOzonWorkers(),
+        checkLocalAssistant(false),
+      ]);
+      ElMessage.success('令牌已更新，采集器状态已刷新');
     }
-    await loadOzonWorkers();
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || error.message || '采集器令牌更新失败');
   } finally {
@@ -1574,16 +1585,16 @@ onUnmounted(() => {});
 }
 
 .assistant-mini-btn {
-  height: 28px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid #d6e3f3;
-  border-radius: 8px;
-  padding: 0 11px;
+  border-radius: 7px;
+  padding: 0 8px;
   color: #475569;
   background: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   transition: all 0.16s ease;
