@@ -1,5 +1,11 @@
 <template>
-  <el-drawer v-model="drawerVisible" :size="720" placement="right" :show-close="false">
+  <el-drawer
+    v-model="drawerVisible"
+    :size="720"
+    placement="right"
+    :show-close="false"
+    class="similar-products-drawer"
+  >
     <template #title>
       <div class="app-surface-header app-surface-header--drawer">
         <div class="app-surface-icon">
@@ -12,142 +18,144 @@
       </div>
     </template>
 
-    <!-- 模拟数据提示 -->
-    <el-alert
-      v-if="isMockData"
-      title="当前使用演示数据，请在系统设置中配置1688 API密钥以获取真实数据"
-      type="warning"
-      :closable="false"
-      show-icon
-      style="margin-bottom: 12px"
-    />
+    <div class="similar-drawer-body">
+      <!-- 模拟数据提示 -->
+      <el-alert
+        v-if="isMockData"
+        title="当前使用演示数据，请在系统设置中配置1688 API密钥以获取真实数据"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="similar-drawer-alert"
+      />
 
-    <!-- 商品列表 -->
-    <div v-if="products.length > 0" class="space-y-4">
-      <div v-for="product in products" :key="product.id" class="similar-product-card">
-        <div class="flex items-start gap-4">
-          <!-- 商品主图 -->
-          <div
-            class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap"
-            @mouseenter="startCarousel(product)"
-            @mouseleave="stopCarousel(product)"
-          >
-            <div class="carousel-strip" :style="carouselStripStyle(product)">
-              <img
-                v-for="(imgUrl, idx) in getCarouselImages(product)"
-                :key="idx"
-                :src="imgUrl"
-                :alt="product.subject || product.name"
-                class="carousel-slide-img"
-              />
+      <!-- 商品列表 -->
+      <div v-if="products.length > 0" class="space-y-4">
+        <div v-for="product in products" :key="product.id" class="similar-product-card">
+          <div class="flex items-start gap-4">
+            <!-- 商品主图 -->
+            <div
+              class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap"
+              @mouseenter="startCarousel(product)"
+              @mouseleave="stopCarousel(product)"
+            >
+              <div class="carousel-strip" :style="carouselStripStyle(product)">
+                <img
+                  v-for="(imgUrl, idx) in getCarouselImages(product)"
+                  :key="idx"
+                  :src="imgUrl"
+                  :alt="product.subject || product.name"
+                  class="carousel-slide-img"
+                />
+              </div>
+              <!-- 占位图 -->
+              <div v-if="!getCarouselImages(product)[0]" class="img-placeholder-small">
+                <el-icon size="24" color="#c0c4cc"><Picture /></el-icon>
+              </div>
+              <!-- 多图指示器 -->
+              <div v-if="getCarouselImages(product).length > 1" class="img-dots">
+                <span
+                  v-for="(_, idx) in getCarouselImages(product).slice(0, 5)"
+                  :key="idx"
+                  class="img-dot"
+                  :class="{ active: getCarouselIndex(product) === idx }"
+                ></span>
+              </div>
             </div>
-            <!-- 占位图 -->
-            <div v-if="!getCarouselImages(product)[0]" class="img-placeholder-small">
-              <el-icon size="24" color="#c0c4cc"><Picture /></el-icon>
-            </div>
-            <!-- 多图指示器 -->
-            <div v-if="getCarouselImages(product).length > 1" class="img-dots">
+
+            <div class="flex-1 min-w-0 text-left">
+              <!-- 商品名称 -->
+              <a
+                v-if="product.detail_url || product.detailUrl"
+                :href="product.detail_url || product.detailUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="product-name block text-sm font-medium text-slate-800 hover:text-blue-600 mb-2"
+                :title="product.subject || product.name"
+              >
+                {{ product.subject || product.name }}
+              </a>
               <span
-                v-for="(_, idx) in getCarouselImages(product).slice(0, 5)"
-                :key="idx"
-                class="img-dot"
-                :class="{ active: getCarouselIndex(product) === idx }"
-              ></span>
-            </div>
-          </div>
-
-          <div class="flex-1 min-w-0 text-left">
-            <!-- 商品名称 -->
-            <a
-              v-if="product.detail_url || product.detailUrl"
-              :href="product.detail_url || product.detailUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="product-name block text-sm font-medium text-slate-800 hover:text-blue-600 mb-2"
-              :title="product.subject || product.name"
-            >
-              {{ product.subject || product.name }}
-            </a>
-            <span
-              v-else
-              class="product-name block text-sm font-medium text-slate-800 mb-2"
-              :title="product.subject || product.name"
-            >
-              {{ product.subject || product.name }}
-            </span>
-
-            <!-- 标签 + 价格 -->
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <el-tag v-if="hasQualityTag(product)" size="small" type="success" effect="plain">
-                质优
-              </el-tag>
-              <span class="price-main">
-                ¥{{ typeof product.price === 'number' ? product.price.toFixed(2) : (parseFloat(product.price) || 0).toFixed(2) }}
+                v-else
+                class="product-name block text-sm font-medium text-slate-800 mb-2"
+                :title="product.subject || product.name"
+              >
+                {{ product.subject || product.name }}
               </span>
-              <span v-if="product.consignPrice" class="price-consign">
-                代发 ¥{{ typeof product.consignPrice === 'number' ? product.consignPrice.toFixed(2) : parseFloat(product.consignPrice).toFixed(2) }}
-              </span>
+
+              <!-- 标签 + 价格 -->
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <el-tag v-if="hasQualityTag(product)" size="small" type="success" effect="plain">
+                  质优
+                </el-tag>
+                <span class="price-main">
+                  ¥{{ typeof product.price === 'number' ? product.price.toFixed(2) : (parseFloat(product.price) || 0).toFixed(2) }}
+                </span>
+                <span v-if="product.consignPrice" class="price-consign">
+                  代发 ¥{{ typeof product.consignPrice === 'number' ? product.consignPrice.toFixed(2) : parseFloat(product.consignPrice).toFixed(2) }}
+                </span>
+              </div>
+
+              <!-- 评分 + 店铺信息 -->
+              <div class="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                <template v-if="product.quality_detail && Object.keys(product.quality_detail).length > 0">
+                  <span v-if="product.quality_detail.compositeScore" class="score-item-small" :class="scoreClass(product.quality_detail.compositeScore)">
+                    综合 {{ product.quality_detail.compositeScore.toFixed(1) }}
+                  </span>
+                  <span v-if="product.quality_detail.goodsScore" class="score-item-small" :class="scoreClass(product.quality_detail.goodsScore)">
+                    商品 {{ product.quality_detail.goodsScore.toFixed(1) }}
+                  </span>
+                  <span v-if="product.quality_detail.logisticsScore" class="score-item-small" :class="scoreClass(product.quality_detail.logisticsScore)">
+                    物流 {{ product.quality_detail.logisticsScore.toFixed(1) }}
+                  </span>
+                  <span class="mx-1 text-slate-300">|</span>
+                </template>
+                <el-icon size="12"><Shop /></el-icon>
+                <span class="truncate max-w-[160px]">{{ product.supplier_name || product.supplier?.name || '1688供应商' }}</span>
+                <span v-if="product.city || product.location" class="supplier-city">· {{ product.city || product.location }}</span>
+              </div>
             </div>
 
-            <!-- 评分 + 店铺信息 -->
-            <div class="flex items-center gap-2 flex-wrap text-xs text-slate-500">
-              <template v-if="product.quality_detail && Object.keys(product.quality_detail).length > 0">
-                <span v-if="product.quality_detail.compositeScore" class="score-item-small" :class="scoreClass(product.quality_detail.compositeScore)">
-                  综合 {{ product.quality_detail.compositeScore.toFixed(1) }}
-                </span>
-                <span v-if="product.quality_detail.goodsScore" class="score-item-small" :class="scoreClass(product.quality_detail.goodsScore)">
-                  商品 {{ product.quality_detail.goodsScore.toFixed(1) }}
-                </span>
-                <span v-if="product.quality_detail.logisticsScore" class="score-item-small" :class="scoreClass(product.quality_detail.logisticsScore)">
-                  物流 {{ product.quality_detail.logisticsScore.toFixed(1) }}
-                </span>
-                <span class="mx-1 text-slate-300">|</span>
-              </template>
-              <el-icon size="12"><Shop /></el-icon>
-              <span class="truncate max-w-[160px]">{{ product.supplier_name || product.supplier?.name || '1688供应商' }}</span>
-              <span v-if="product.city || product.location" class="supplier-city">· {{ product.city || product.location }}</span>
+            <div class="flex-shrink-0">
+              <el-button type="primary" @click="handleAddToLibrary(product)" class="rounded-lg" size="small">
+                <el-icon class="mr-1"><Plus /></el-icon>
+                采集
+              </el-button>
             </div>
-          </div>
-
-          <div class="flex-shrink-0">
-            <el-button type="primary" @click="handleAddToLibrary(product)" class="rounded-lg" size="small">
-              <el-icon class="mr-1"><Plus /></el-icon>
-              采集
-            </el-button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 加载状态 -->
-    <div v-else-if="isSearching" class="search-loading-container">
-      <div class="search-orbit-loader" aria-hidden="true">
-        <span class="search-orbit-ring"></span>
-        <span class="search-orbit-dot dot-one"></span>
-        <span class="search-orbit-dot dot-two"></span>
-        <span class="search-orbit-dot dot-three"></span>
-        <el-icon class="search-orbit-icon"><Search /></el-icon>
-      </div>
-      <div class="search-progress-track" aria-hidden="true">
-        <span class="search-progress-fill"></span>
-      </div>
-      <p class="search-loading-subtitle">正在1688搜索{{ title === '同款商品' ? '同款' : '同类' }}商品</p>
-      <p class="search-loading-time" v-if="elapsed > 0">已搜索{{ elapsed }}秒</p>
-    </div>
-
-    <!-- 无结果 -->
-    <AppEmpty v-else title="未找到同款商品" description="未找到同款商品" />
-
-  <!-- 无限滚动哨兵 -->
-  <div ref="sentinelRef" class="load-more-sentinel">
-      <div v-if="isLoadingMore" class="load-more-spinner">
-        <div class="load-more-dots">
-          <span></span><span></span><span></span>
+      <!-- 加载状态 -->
+      <div v-else-if="isSearching" class="search-loading-container">
+        <div class="search-orbit-loader" aria-hidden="true">
+          <span class="search-orbit-ring"></span>
+          <span class="search-orbit-dot dot-one"></span>
+          <span class="search-orbit-dot dot-two"></span>
+          <span class="search-orbit-dot dot-three"></span>
+          <el-icon class="search-orbit-icon"><Search /></el-icon>
         </div>
-        <span class="load-more-text">加载更多商品...</span>
+        <div class="search-progress-track" aria-hidden="true">
+          <span class="search-progress-fill"></span>
+        </div>
+        <p class="search-loading-subtitle">正在1688搜索{{ title === '同款商品' ? '同款' : '同类' }}商品</p>
+        <p class="search-loading-time" v-if="elapsed > 0">已搜索{{ elapsed }}秒</p>
       </div>
-      <div v-else-if="!hasMore && products.length > 0" class="load-more-end">
-        已加载全部 {{ products.length }} 件商品
+
+      <!-- 无结果 -->
+      <AppEmpty v-else title="未找到同款商品" description="未找到同款商品" />
+
+      <!-- 无限滚动哨兵 -->
+      <div ref="sentinelRef" class="load-more-sentinel">
+        <div v-if="isLoadingMore" class="load-more-spinner">
+          <div class="load-more-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="load-more-text">加载更多商品...</span>
+        </div>
+        <div v-else-if="!hasMore && products.length > 0" class="load-more-end">
+          已加载全部 {{ products.length }} 件商品
+        </div>
       </div>
     </div>
   </el-drawer>
@@ -320,6 +328,20 @@ defineExpose({
 </script>
 
 <style scoped>
+:global(.similar-products-drawer .el-drawer__body) {
+  padding: 0 !important;
+}
+
+.similar-drawer-body {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 24px 24px 28px;
+}
+
+.similar-drawer-alert {
+  margin-bottom: 16px;
+}
+
 .similar-product-card {
   background: #fff;
   border: 1px solid #e2e8f0;
