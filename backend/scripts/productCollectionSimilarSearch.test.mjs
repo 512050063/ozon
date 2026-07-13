@@ -21,6 +21,7 @@ assert.match(drawer, /quality_score/, 'similar products drawer should base quali
 assert.match(drawer, /product\.image_url/, 'similar products drawer should render backend image_url fields')
 assert.match(drawer, /product\.imageUrl/, 'similar products drawer should render backend imageUrl fields')
 assert.match(drawer, /product\.image\)/, 'similar products drawer should render backend image fields')
+assert.match(drawer, /toDisplayImageUrl\(imgUrl\)/, 'similar products drawer should proxy Alibaba CDN images for display')
 
 assert.match(productCollection, /getCategoryLeafText\(product\)[\s\S]*?searchKeyword/, 'same-category search should use the leaf category text instead of the full category path')
 assert.doesNotMatch(productCollection, /const searchKeyword = product\.category && product\.category\.trim\(\)[\s\S]*?\? product\.category\.trim\(\)/, 'same-category search should not send the full category path as the 1688 keyword')
@@ -33,6 +34,8 @@ assert.doesNotMatch(alibabaService, /call1688Api\(userId,\s*'com\.alibaba\.fenxi
 assert.match(alibabaService, /filterRelevanceWithFallback/, 'keyword search should avoid returning too few items when relevance filtering is too aggressive')
 assert.match(alibabaService, /p\.image_url[\s\S]*?p\.imageUrl[\s\S]*?p\.imgUrl[\s\S]*?p\.mainImage/, '1688 product parsing should preserve common image fields')
 assert.match(alibabaService, /fetchImageAsBase64/, 'image search should retry with base64 when remote URL search fails')
+assert.match(alibabaService, /isWebpImageBuffer[\s\S]*?convertImageBufferToJpegBase64/, 'image search should convert downloaded WebP images before Base64 retry')
+assert.match(alibabaService, /canvas\.toDataURL\('image\/jpeg'/, 'image search should convert WebP to JPEG for 1688 image search')
 assert.match(alibabaService, /URL图搜失败，尝试下载图片并使用Base64重试跨境图搜/, 'image search should log the base64 retry path')
 
 console.log('productCollectionSimilarSearch tests passed')

@@ -1261,6 +1261,12 @@ export async function batchGetAlibabaProducts(userId: number, productIds: string
 
 const MAX_IMAGE_SEARCH_BYTES = 8 * 1024 * 1024;
 
+const isWebpImageBuffer = (buffer: Buffer): boolean => {
+  return buffer.length >= 12
+    && buffer.subarray(0, 4).toString('ascii') === 'RIFF'
+    && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+};
+
 const normalizeImageSearchUrl = (value?: string): string => {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -1281,6 +1287,40 @@ const getImageFetchReferer = (imageUrl: string): string => {
   } catch {
   }
   return 'https://www.ozon.ru/';
+};
+
+const convertImageBufferToJpegBase64 = async (buffer: Buffer, contentType: string): Promise<string> => {
+  const mimeType = contentType.startsWith('image/') ? contentType : 'image/webp';
+  const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1600 } });
+    const jpegDataUrl = await page.evaluate(async (src) => {
+      const image = new Image();
+      image.decoding = 'sync';
+      image.src = src;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('图片格式转换失败'));
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('图片格式转换失败');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      return canvas.toDataURL('image/jpeg', 0.92);
+    }, dataUrl);
+    return jpegDataUrl.split(',')[1] || '';
+  } finally {
+    await browser.close();
+  }
 };
 
 const fetchImageAsBase64 = async (imageUrl: string): Promise<string> => {
@@ -1311,7 +1351,12 @@ const fetchImageAsBase64 = async (imageUrl: string): Promise<string> => {
   if (arrayBuffer.byteLength > MAX_IMAGE_SEARCH_BYTES) {
     throw new Error('图片过大');
   }
-  return Buffer.from(arrayBuffer).toString('base64');
+  const buffer = Buffer.from(arrayBuffer);
+  if (isWebpImageBuffer(buffer)) {
+    logger.warn('[image-search] 下载图片为WebP格式，转换为JPEG后重试图搜');
+    return convertImageBufferToJpegBase64(buffer, contentType);
+  }
+  return buffer.toString('base64');
 };
 
 /**

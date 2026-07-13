@@ -44,7 +44,7 @@
                 <img
                   v-for="(imgUrl, idx) in getCarouselImages(product)"
                   :key="idx"
-                  :src="imgUrl"
+                  :src="toDisplayImageUrl(imgUrl)"
                   :alt="product.subject || product.name"
                   class="carousel-slide-img"
                 />
@@ -166,6 +166,7 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { Search, Picture, Shop, Plus } from '@element-plus/icons-vue';
 import AppEmpty from '@/components/ui/AppEmpty.vue';
+import { toDisplayImageUrl } from '@/utils/imageUrl';
 
 // Props
 interface Props {
