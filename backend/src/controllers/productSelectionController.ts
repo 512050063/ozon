@@ -1,9 +1,34 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import logger from '../config/logger';
-import { normalizePersistedCategory } from '../utils/productCategory';
+import { normalizeProductSelectionCategoryFields } from '../services/productSelectionCategoryService';
 
 const prisma = new PrismaClient();
+
+const normalizeSelectionRowCategory = (product: any) => {
+  const normalized = normalizeProductSelectionCategoryFields({
+    category: product.category,
+    categoryLeaf: product.categoryLeaf,
+    descriptionCategoryId: product.descriptionCategoryId,
+    typeId: product.typeId,
+    categoryVerified: product.categoryVerified,
+  });
+  return {
+    ...product,
+    category: normalized.category,
+    categoryLeaf: normalized.categoryLeaf,
+    descriptionCategoryId: normalized.descriptionCategoryId,
+    typeId: normalized.typeId,
+    categoryVerified: normalized.categoryVerified,
+  };
+};
+
+const shouldPersistNormalizedCategory = (original: any, normalized: any) =>
+  original.category !== normalized.category ||
+  original.categoryLeaf !== normalized.categoryLeaf ||
+  original.descriptionCategoryId !== normalized.descriptionCategoryId ||
+  original.typeId !== normalized.typeId ||
+  original.categoryVerified !== normalized.categoryVerified;
 
 export const createProductSelection = async (req: Request, res: Response) => {
   try {
@@ -44,37 +69,23 @@ export const createProductSelection = async (req: Request, res: Response) => {
     });
 
     if (existingProduct) {
-      const persistedCategory = normalizePersistedCategory({
+      const normalizedCategory = normalizeProductSelectionCategoryFields({
         category: category !== undefined ? category : existingProduct.category,
         categoryLeaf: categoryLeaf !== undefined ? categoryLeaf : existingProduct.categoryLeaf,
+        descriptionCategoryId: descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId,
+        typeId: typeId !== undefined ? typeId : existingProduct.typeId,
+        categoryVerified: existingProduct.categoryVerified,
       });
-      const resolvedDescriptionCategoryId = descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId;
-      const resolvedTypeId = typeId !== undefined ? typeId : existingProduct.typeId;
-      // 验证类目是否存在 ozon_categories 表
-      let categoryVerified = Boolean(resolvedDescriptionCategoryId || resolvedTypeId) || existingProduct.categoryVerified;
-      if (persistedCategory.category && !categoryVerified) {
-        const normalizedCategory = persistedCategory.category.trim().toLowerCase();
-        const foundCategory = await prisma.ozonCategory.findFirst({
-          where: {
-            OR: [
-              { name: { equals: persistedCategory.category } },
-              { name: { equals: normalizedCategory } },
-              { path: { contains: persistedCategory.category } }
-            ]
-          }
-        });
-        categoryVerified = !!foundCategory;
-      }
 
       logger.info('商品已存在，更新记录:', ozonId);
       const updatedProduct = await prisma.productSelection.update({
         where: { id: existingProduct.id },
         data: {
           name,
-          category: persistedCategory.category,
-          categoryLeaf: persistedCategory.categoryLeaf,
-          descriptionCategoryId: resolvedDescriptionCategoryId,
-          typeId: resolvedTypeId,
+          category: normalizedCategory.category,
+          categoryLeaf: normalizedCategory.categoryLeaf,
+          descriptionCategoryId: normalizedCategory.descriptionCategoryId,
+          typeId: normalizedCategory.typeId,
           brand: brand || '',
           price: price || 0,
           originalPrice: originalPrice || 0,
@@ -85,7 +96,7 @@ export const createProductSelection = async (req: Request, res: Response) => {
           reviews: reviews || 0,
           imageUrl,
           productUrl,
-          categoryVerified
+          categoryVerified: normalizedCategory.categoryVerified
         }
       });
 
@@ -96,33 +107,23 @@ export const createProductSelection = async (req: Request, res: Response) => {
       });
     }
 
-    const persistedCategory = normalizePersistedCategory({ category, categoryLeaf });
-    // 验证类目是否存在 ozon_categories 表
-    let categoryVerified = Boolean(descriptionCategoryId || typeId);
-    if (persistedCategory.category) {
-      const normalizedCategory = persistedCategory.category.trim().toLowerCase();
-      const foundCategory = await prisma.ozonCategory.findFirst({
-        where: {
-          OR: [
-            { name: { equals: persistedCategory.category } },
-            { name: { equals: normalizedCategory } },
-            { path: { contains: persistedCategory.category } }
-          ]
-        }
-      });
-      categoryVerified = categoryVerified || !!foundCategory;
-      logger.info(`类目验证: "${persistedCategory.category}" => ${categoryVerified ? '通过' : '未通过'}`);
-    }
+    const normalizedCategory = normalizeProductSelectionCategoryFields({
+      category,
+      categoryLeaf,
+      descriptionCategoryId,
+      typeId,
+    });
+    logger.info(`类目验证: "${normalizedCategory.category}" => ${normalizedCategory.categoryVerified ? '通过' : '未通过'}`);
 
     const newProduct = await prisma.productSelection.create({
       data: {
         userId,
         name,
         ozonId,
-        category: persistedCategory.category,
-        categoryLeaf: persistedCategory.categoryLeaf,
-        descriptionCategoryId: descriptionCategoryId ?? null,
-        typeId: typeId ?? null,
+        category: normalizedCategory.category,
+        categoryLeaf: normalizedCategory.categoryLeaf,
+        descriptionCategoryId: normalizedCategory.descriptionCategoryId,
+        typeId: normalizedCategory.typeId,
         brand: brand || '',
         price: price || 0,
         originalPrice: originalPrice || 0,
@@ -133,7 +134,7 @@ export const createProductSelection = async (req: Request, res: Response) => {
         reviews: reviews || 0,
         imageUrl,
         productUrl,
-        categoryVerified
+        categoryVerified: normalizedCategory.categoryVerified
       }
     });
 
@@ -179,9 +180,26 @@ export const getProductSelections = async (req: Request, res: Response) => {
       prisma.productSelection.count({ where })
     ]);
 
+    const normalizedItems = await Promise.all(items.map(async item => {
+      const normalized = normalizeSelectionRowCategory(item);
+      if (shouldPersistNormalizedCategory(item, normalized)) {
+        await prisma.productSelection.update({
+          where: { id: item.id },
+          data: {
+            category: normalized.category,
+            categoryLeaf: normalized.categoryLeaf,
+            descriptionCategoryId: normalized.descriptionCategoryId,
+            typeId: normalized.typeId,
+            categoryVerified: normalized.categoryVerified,
+          },
+        });
+      }
+      return normalized;
+    }));
+
     res.json({
       success: true,
-      data: items,
+      data: normalizedItems,
       total,
       page: Number(page),
       limit: Number(limit)
@@ -213,9 +231,23 @@ export const getProductSelectionById = async (req: Request, res: Response) => {
       });
     }
 
+    const normalizedProduct = normalizeSelectionRowCategory(product);
+    if (shouldPersistNormalizedCategory(product, normalizedProduct)) {
+      await prisma.productSelection.update({
+        where: { id: product.id },
+        data: {
+          category: normalizedProduct.category,
+          categoryLeaf: normalizedProduct.categoryLeaf,
+          descriptionCategoryId: normalizedProduct.descriptionCategoryId,
+          typeId: normalizedProduct.typeId,
+          categoryVerified: normalizedProduct.categoryVerified,
+        },
+      });
+    }
+
     res.json({
       success: true,
-      data: product
+      data: normalizedProduct
     });
   } catch (error: any) {
     logger.error('查询选品详情失败:', error);
@@ -263,19 +295,22 @@ export const updateProductSelection = async (req: Request, res: Response) => {
       });
     }
 
-    const persistedCategory = normalizePersistedCategory({
+    const normalizedCategory = normalizeProductSelectionCategoryFields({
       category: category !== undefined ? category : existingProduct.category,
       categoryLeaf: categoryLeaf !== undefined ? categoryLeaf : existingProduct.categoryLeaf,
+      descriptionCategoryId: descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId,
+      typeId: typeId !== undefined ? typeId : existingProduct.typeId,
+      categoryVerified: categoryVerified !== undefined ? categoryVerified : existingProduct.categoryVerified,
     });
 
     const updatedProduct = await prisma.productSelection.update({
       where: { id: Number(id) },
       data: {
         name: name || existingProduct.name,
-        category: persistedCategory.category,
-        categoryLeaf: persistedCategory.categoryLeaf,
-        descriptionCategoryId: descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId,
-        typeId: typeId !== undefined ? typeId : existingProduct.typeId,
+        category: normalizedCategory.category,
+        categoryLeaf: normalizedCategory.categoryLeaf,
+        descriptionCategoryId: normalizedCategory.descriptionCategoryId,
+        typeId: normalizedCategory.typeId,
         brand: brand || existingProduct.brand,
         price: price !== undefined ? price : existingProduct.price,
         originalPrice: originalPrice !== undefined ? originalPrice : existingProduct.originalPrice,
@@ -287,7 +322,7 @@ export const updateProductSelection = async (req: Request, res: Response) => {
         imageUrl: imageUrl || existingProduct.imageUrl,
         productUrl: productUrl || existingProduct.productUrl,
         status: status || existingProduct.status,
-        categoryVerified: categoryVerified !== undefined ? categoryVerified : existingProduct.categoryVerified
+        categoryVerified: normalizedCategory.categoryVerified
       }
     });
 
