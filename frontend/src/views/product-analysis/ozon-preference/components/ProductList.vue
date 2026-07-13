@@ -58,9 +58,9 @@
                     </span>
                     <span v-else-if="!extractCompleted" class="flex items-center gap-1 text-xs text-blue-500">
                       <span class="w-3 h-3 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></span>
-                      类目获取中
+                      类型获取中
                     </span>
-                    <span v-else class="text-xs text-red-400">类目获取失败</span>
+                    <span v-else class="text-xs text-red-400">类型获取失败</span>
                   </div>
                 </div>
               </div>

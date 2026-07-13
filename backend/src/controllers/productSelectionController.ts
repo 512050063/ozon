@@ -48,8 +48,10 @@ export const createProductSelection = async (req: Request, res: Response) => {
         category: category !== undefined ? category : existingProduct.category,
         categoryLeaf: categoryLeaf !== undefined ? categoryLeaf : existingProduct.categoryLeaf,
       });
+      const resolvedDescriptionCategoryId = descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId;
+      const resolvedTypeId = typeId !== undefined ? typeId : existingProduct.typeId;
       // 验证类目是否存在 ozon_categories 表
-      let categoryVerified = existingProduct.categoryVerified;
+      let categoryVerified = Boolean(resolvedDescriptionCategoryId || resolvedTypeId) || existingProduct.categoryVerified;
       if (persistedCategory.category && !categoryVerified) {
         const normalizedCategory = persistedCategory.category.trim().toLowerCase();
         const foundCategory = await prisma.ozonCategory.findFirst({
@@ -71,8 +73,8 @@ export const createProductSelection = async (req: Request, res: Response) => {
           name,
           category: persistedCategory.category,
           categoryLeaf: persistedCategory.categoryLeaf,
-          descriptionCategoryId: descriptionCategoryId !== undefined ? descriptionCategoryId : existingProduct.descriptionCategoryId,
-          typeId: typeId !== undefined ? typeId : existingProduct.typeId,
+          descriptionCategoryId: resolvedDescriptionCategoryId,
+          typeId: resolvedTypeId,
           brand: brand || '',
           price: price || 0,
           originalPrice: originalPrice || 0,
@@ -90,13 +92,13 @@ export const createProductSelection = async (req: Request, res: Response) => {
       return res.json({
         success: true,
         data: updatedProduct,
-        message: categoryVerified ? '商品已更新' : '商品已更新（类目未匹配到数据库）'
+        message: '商品已更新'
       });
     }
 
     const persistedCategory = normalizePersistedCategory({ category, categoryLeaf });
     // 验证类目是否存在 ozon_categories 表
-    let categoryVerified = false;
+    let categoryVerified = Boolean(descriptionCategoryId || typeId);
     if (persistedCategory.category) {
       const normalizedCategory = persistedCategory.category.trim().toLowerCase();
       const foundCategory = await prisma.ozonCategory.findFirst({
@@ -108,7 +110,7 @@ export const createProductSelection = async (req: Request, res: Response) => {
           ]
         }
       });
-      categoryVerified = !!foundCategory;
+      categoryVerified = categoryVerified || !!foundCategory;
       logger.info(`类目验证: "${persistedCategory.category}" => ${categoryVerified ? '通过' : '未通过'}`);
     }
 
@@ -139,7 +141,7 @@ export const createProductSelection = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: newProduct,
-      message: categoryVerified ? '商品保存成功' : '商品保存成功（类目未匹配到数据库）'
+      message: '商品保存成功'
     });
   } catch (error: any) {
     logger.error('创建选品失败:', error);
