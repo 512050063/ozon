@@ -30,7 +30,9 @@ assert.match(pushRoutes, /router\.post\('\/receive\/:storeId\/:secret'/, 'Push r
 assert.match(pushController, /receiveOzonPush/, 'Push controller should expose receiveOzonPush');
 assert.match(pushController, /pushSecret:\s*secret/, 'Push receiver should verify the store secret');
 assert.match(pushController, /ozonPushEvent\.upsert/, 'Push receiver should upsert events for idempotency');
-assert.match(pushController, /res\.status\(200\)\.json\(\{\s*success:\s*true/, 'Push receiver should quickly return 200');
+assert.match(pushController, /result:\s*true/, 'Push receiver should return the Ozon acknowledgement result');
+assert.match(pushController, /time:\s*getOzonPushResponseTime\(payloadItems\)/, 'Push receiver should return an Ozon-compatible acknowledgement time');
+assert.match(pushController, /formatOzonPushTime/, 'Push receiver should format acknowledgement time without milliseconds');
 
 assert.match(storeController, /getOzonPushUrl/, 'Store controller should generate a push URL');
 assert.match(storeController, /resetOzonPushSecret/, 'Store controller should reset a push secret');

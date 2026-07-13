@@ -71,6 +71,24 @@ function getSourceIp(req: Request) {
   );
 }
 
+function formatOzonPushTime(date = new Date()) {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function isValidOzonPushTime(value: any) {
+  if (typeof value !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) return false;
+  return !Number.isNaN(Date.parse(value));
+}
+
+function getOzonPushResponseTime(payloadItems: any[]) {
+  const requestTime = payloadItems
+    .map(item => item?.time)
+    .find(isValidOzonPushTime);
+
+  return requestTime || formatOzonPushTime();
+}
+
 export const receiveOzonPush = async (req: Request, res: Response) => {
   const storeId = Number(req.params.storeId);
   const { secret } = req.params;
@@ -140,8 +158,8 @@ export const receiveOzonPush = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({
-      success: true,
-      message: 'received',
+      result: true,
+      time: getOzonPushResponseTime(payloadItems),
     });
   } catch (error: any) {
     logger.error('接收 Ozon 推送失败:', error);
