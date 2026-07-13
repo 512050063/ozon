@@ -1,10 +1,15 @@
 import { Request, Response } from 'express';
 import { searchOzonProducts } from '../services/ozonSearchService';
 import { resolveOzonProductLinkWithDefaultDependencies } from '../services/ozonProductLinkService';
-import { createBrowserTask } from '../services/ozonBrowserTaskService';
+import { createBrowserTask, hasActiveWorkerForUser } from '../services/ozonBrowserTaskService';
 import logger from '../config/logger';
 
 const shouldUseLocalWorker = () => process.env.OZON_BROWSER_WORKER_MODE === 'required';
+const LOCAL_WORKER_OFFLINE_RESPONSE = {
+  success: false,
+  code: 'LOCAL_WORKER_OFFLINE',
+  message: '本机采集器未在线，请先到 API 配置中更新令牌并启动采集器',
+};
 
 export async function searchProducts(req: Request, res: Response) {
   try {
@@ -18,6 +23,11 @@ export async function searchProducts(req: Request, res: Response) {
     }
 
     if (shouldUseLocalWorker()) {
+      const hasActiveWorker = await hasActiveWorkerForUser(req.user!.id);
+      if (!hasActiveWorker) {
+        return res.status(409).json(LOCAL_WORKER_OFFLINE_RESPONSE);
+      }
+
       const task = await createBrowserTask(req.user!.id, {
         type: 'preference_search',
         payload: {
@@ -59,6 +69,11 @@ export async function getProductByUrl(req: Request, res: Response) {
     }
 
     if (shouldUseLocalWorker()) {
+      const hasActiveWorker = await hasActiveWorkerForUser(req.user!.id);
+      if (!hasActiveWorker) {
+        return res.status(409).json(LOCAL_WORKER_OFFLINE_RESPONSE);
+      }
+
       const task = await createBrowserTask(req.user!.id, {
         type: 'product_by_url',
         payload: { productUrl },

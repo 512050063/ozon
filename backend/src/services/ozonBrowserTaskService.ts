@@ -4,6 +4,7 @@ import prisma from '../config/database';
 const WORKER_TOKEN_PREFIX = 'owk_';
 const DEFAULT_TASK_TTL_MS = 15 * 60 * 1000;
 const MAX_TASK_ERROR_MESSAGE_LENGTH = 180;
+export const WORKER_HEARTBEAT_STALE_MS = 30 * 1000;
 
 export type OzonBrowserTaskType =
   | 'preference_search'
@@ -31,6 +32,32 @@ export const hashWorkerToken = (token: string): string => {
 
 const createRawWorkerToken = (): string => {
   return `${WORKER_TOKEN_PREFIX}${crypto.randomBytes(32).toString('hex')}`;
+};
+
+const isWorkerHeartbeatFresh = (lastSeenAt: Date | string | null | undefined) => {
+  if (!lastSeenAt) {
+    return false;
+  }
+
+  const heartbeatAt = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
+  return Number.isFinite(heartbeatAt.getTime()) && Date.now() - heartbeatAt.getTime() <= WORKER_HEARTBEAT_STALE_MS;
+};
+
+export const normalizeWorkerStatus = <T extends { status?: string; lastSeenAt?: Date | string | null }>(
+  worker: T,
+): T => {
+  if (worker.status !== 'online') {
+    return worker;
+  }
+
+  if (isWorkerHeartbeatFresh(worker.lastSeenAt)) {
+    return worker;
+  }
+
+  return {
+    ...worker,
+    status: 'offline',
+  };
 };
 
 const toPublicWorker = (worker: any) => {
@@ -124,7 +151,23 @@ export const getUserWorkers = async (userId: number) => {
     orderBy: { updatedAt: 'desc' },
   });
 
-  return workers.map(toPublicWorker);
+  return workers.map(toPublicWorker).map(normalizeWorkerStatus);
+};
+
+export const hasActiveWorkerForUser = async (userId: number) => {
+  const activeSince = new Date(Date.now() - WORKER_HEARTBEAT_STALE_MS);
+  const worker = await prisma.ozonBrowserWorker.findFirst({
+    where: {
+      userId,
+      status: 'online',
+      lastSeenAt: {
+        gte: activeSince,
+      },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(worker);
 };
 
 export const deleteUserWorker = async (userId: number, workerId: number) => {
