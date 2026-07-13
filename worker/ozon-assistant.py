@@ -63,6 +63,20 @@ def get_worker_running() -> bool:
     return worker_process is not None and worker_process.poll() is None
 
 
+def stop_worker_process():
+    global worker_process
+    if not get_worker_running() or worker_process is None:
+        worker_process = None
+        return
+    worker_process.terminate()
+    try:
+        worker_process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        worker_process.kill()
+        worker_process.wait(timeout=3)
+    worker_process = None
+
+
 def load_state() -> dict[str, Any]:
     if not ASSISTANT_STATE_FILE.exists():
         return {}
@@ -169,13 +183,9 @@ def handle_worker_start(handler: BaseHTTPRequestHandler):
         },
     })
 
-    if get_worker_running():
-      json_response(handler, 200, {
-          "success": True,
-          "message": "本机采集器已在运行",
-          "data": {"running": True, "pid": worker_process.pid, "configPath": str(CONFIG_FILE)},
-      })
-      return
+    was_running = get_worker_running()
+    if was_running:
+        stop_worker_process()
 
     command = [python_path, str(WORKER_SCRIPT), "--config", str(CONFIG_FILE), "--loop"]
     worker_process = subprocess.Popen(
@@ -187,16 +197,13 @@ def handle_worker_start(handler: BaseHTTPRequestHandler):
     )
     json_response(handler, 200, {
         "success": True,
-        "message": "本机采集器已启动",
+        "message": "本机采集器已重启" if was_running else "本机采集器已启动",
         "data": {"running": True, "pid": worker_process.pid, "configPath": str(CONFIG_FILE)},
     })
 
 
 def handle_worker_stop(handler: BaseHTTPRequestHandler):
-    global worker_process
-    if get_worker_running() and worker_process:
-        worker_process.terminate()
-        worker_process = None
+    stop_worker_process()
     json_response(handler, 200, {"success": True, "message": "本机采集器已停止", "data": {"running": False}})
 
 

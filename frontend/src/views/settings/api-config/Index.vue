@@ -824,6 +824,8 @@ const buildWorkerConfigSnippet = (config: LocalWorkerConfig) => {
   return JSON.stringify(config, null, 2);
 };
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const checkLocalAssistant = async (showToast = true) => {
   isCheckingLocalAssistant.value = true;
   try {
@@ -895,6 +897,18 @@ const loadOzonWorkers = async () => {
   }
 };
 
+const refreshWorkersUntilOnline = async (maxAttempts = 6) => {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    await loadOzonWorkers();
+    if (ozonWorkers.value.some(worker => worker.status === 'online')) {
+      return true;
+    }
+    await wait(1000);
+  }
+  await loadOzonWorkers();
+  return ozonWorkers.value.some(worker => worker.status === 'online');
+};
+
 const createOzonWorker = async () => {
   isCreatingWorker.value = true;
   try {
@@ -918,7 +932,7 @@ const createOzonWorker = async () => {
       ElMessage.success('令牌已更新，已复制配置，请按弹窗手动启动');
     } else {
       await Promise.allSettled([
-        loadOzonWorkers(),
+        refreshWorkersUntilOnline(),
         checkLocalAssistant(false),
       ]);
       ElMessage.success('令牌已更新，采集器状态已刷新');

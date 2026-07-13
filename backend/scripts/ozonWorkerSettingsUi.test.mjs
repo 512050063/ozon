@@ -8,6 +8,9 @@ const view = fs.readFileSync(viewPath, 'utf8');
 
 assert.match(view, /\.assistant-mini-btn\s*\{[\s\S]*?height:\s*24px/);
 assert.match(view, /await Promise\.allSettled\(\[\s*loadOzonWorkers\(\),\s*checkLocalAssistant\(false\),?\s*\]\)/);
+assert.match(view, /const refreshWorkersUntilOnline = async \(maxAttempts = 6\)/);
+assert.match(view, /worker\.status === 'online'/);
+assert.match(view, /refreshWorkersUntilOnline\(\),\s*checkLocalAssistant\(false\)/);
 assert.match(view, /采集器状态已刷新/);
 assert.match(view, /令牌已更新，采集器状态已刷新/);
 assert.match(view, /更新令牌会刷新当前采集器，不会重复新增记录/);
