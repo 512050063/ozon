@@ -34,6 +34,15 @@ export const ozonWorkerAPI = {
     };
   },
 
+  refreshDefaultWorker: async (name = '本机采集器'): Promise<{ success: boolean; data?: CreateOzonWorkerResponse; message?: string }> => {
+    const response = await request.put('/ozon/browser/workers/default', { name });
+    return {
+      success: response.success,
+      data: response.data,
+      message: response.message,
+    };
+  },
+
   deleteWorker: async (id: number): Promise<{ success: boolean; message?: string }> => {
     const response = await request.delete(`/ozon/browser/workers/${id}`);
     return {

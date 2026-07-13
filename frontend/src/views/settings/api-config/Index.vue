@@ -322,7 +322,16 @@
                     </div>
 
                     <div class="ozon-assistant-section">
-                      <div class="section-kicker">环境检测</div>
+                      <div class="section-header-line">
+                        <div class="section-kicker">环境检测</div>
+                        <button
+                          class="assistant-mini-btn"
+                          :disabled="isCheckingLocalAssistant"
+                          @click="checkLocalAssistant"
+                        >
+                          {{ isCheckingLocalAssistant ? '检测中' : '检测环境' }}
+                        </button>
+                      </div>
                       <div class="env-check-list" v-if="localAssistantEnv">
                         <div v-for="item in assistantEnvItems" :key="item.key" class="env-check-row">
                           <span class="assistant-dot" :class="item.ok ? 'is-online' : 'is-offline'"></span>
@@ -331,36 +340,31 @@
                         </div>
                       </div>
                       <p v-else class="section-desc">检测 Python、Chrome、项目路径和 worker 配置状态。</p>
-                      <button
-                        class="api-config-button api-config-button--secondary mt-3"
-                        :disabled="isCheckingLocalAssistant"
-                        @click="checkLocalAssistant"
-                      >
-                        {{ isCheckingLocalAssistant ? '检测中...' : '检测本机环境' }}
-                      </button>
                     </div>
 
                     <div class="ozon-assistant-section">
-                      <div class="section-kicker">启动采集器</div>
-                      <p class="section-desc">
-                        点击生成令牌后，如果本机助手在线，会自动写入配置并启动 worker；否则弹出配置和启动命令供手动运行。
-                      </p>
-                      <div class="flex items-center gap-2 mt-4">
-                        <button
-                          class="api-config-button api-config-button--secondary"
-                          :disabled="isLoadingWorkers"
-                          @click="loadOzonWorkers"
-                        >
-                          刷新状态
-                        </button>
-                        <button
-                          class="api-config-button api-config-button--primary"
-                          :disabled="isCreatingWorker || isStartingLocalWorker"
-                          @click="createOzonWorker"
-                        >
-                          {{ isCreatingWorker || isStartingLocalWorker ? '处理中...' : '生成令牌' }}
-                        </button>
+                      <div class="section-header-line">
+                        <div class="section-kicker">启动采集器</div>
+                        <div class="assistant-mini-actions">
+                          <button
+                            class="assistant-mini-btn"
+                            :disabled="isLoadingWorkers"
+                            @click="loadOzonWorkers"
+                          >
+                            刷新
+                          </button>
+                          <button
+                            class="assistant-mini-btn is-primary"
+                            :disabled="isCreatingWorker || isStartingLocalWorker"
+                            @click="createOzonWorker"
+                          >
+                            {{ isCreatingWorker || isStartingLocalWorker ? '处理中' : '更新令牌' }}
+                          </button>
+                        </div>
                       </div>
+                      <p class="section-desc">
+                        点击更新令牌后，如果本机助手在线，会自动写入配置并启动 worker；否则弹出配置和启动命令供手动运行。
+                      </p>
                     </div>
                   </div>
 
@@ -372,7 +376,7 @@
                     <div class="grid grid-cols-1 gap-2">
                       <div v-if="isLoadingWorkers" class="text-xs text-slate-400 text-left">正在获取采集器状态...</div>
                       <div v-else-if="ozonWorkers.length === 0" class="worker-empty-row">
-                        暂无采集器，启动本机助手后点击“生成令牌”即可上线。
+                        暂无采集器，启动本机助手后点击“更新令牌”即可上线。
                       </div>
                       <div
                         v-for="worker in ozonWorkers"
@@ -892,9 +896,9 @@ const loadOzonWorkers = async () => {
 const createOzonWorker = async () => {
   isCreatingWorker.value = true;
   try {
-    const response = await ozonWorkerAPI.createWorker(`本机采集器 ${new Date().toLocaleString()}`);
+    const response = await ozonWorkerAPI.refreshDefaultWorker('本机采集器');
     if (!response.success || !response.data?.token) {
-      ElMessage.error(response.message || '采集器令牌生成失败');
+      ElMessage.error(response.message || '采集器令牌更新失败');
       return;
     }
     const config = buildWorkerConfig(response.data.token);
@@ -905,11 +909,11 @@ const createOzonWorker = async () => {
     if (!started) {
       await tryCopyWorkerConfigSilently();
       showWorkerTokenDialog.value = true;
-      ElMessage.success('采集器令牌已生成，请按弹窗手动启动');
+      ElMessage.success('采集器令牌已更新，请按弹窗手动启动');
     }
     await loadOzonWorkers();
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || error.message || '采集器令牌生成失败');
+    ElMessage.error(error.response?.data?.message || error.message || '采集器令牌更新失败');
   } finally {
     isCreatingWorker.value = false;
   }
@@ -919,7 +923,7 @@ const deleteOzonWorker = async (worker: OzonBrowserWorker) => {
   try {
     await appConfirm({
       title: '删除本机采集器',
-      message: `确定要删除“${worker.name}”吗？删除后该采集器令牌会立即失效，需要重新生成令牌才能连接。`,
+      message: `确定要删除“${worker.name}”吗？删除后该采集器令牌会立即失效，需要重新更新令牌才能连接。`,
       confirmText: '删除',
       variant: 'danger',
       icon: 'delete',
@@ -1441,22 +1445,21 @@ onUnmounted(() => {});
 }
 
 .ozon-settings-icon-btn {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #cfe0f6;
+  border: 0;
   border-radius: 10px;
   color: #2563eb;
-  background: #f8fbff;
+  background: #eef5ff;
   transition: all 0.18s ease;
 }
 
 .ozon-settings-icon-btn:hover {
-  border-color: #93c5fd;
   color: #1d4ed8;
-  background: #eff6ff;
+  background: #e0edff;
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12);
 }
 
@@ -1478,12 +1481,29 @@ onUnmounted(() => {});
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
+.section-header-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  margin-bottom: 8px;
+}
+
 .section-kicker {
   color: #475569;
   font-size: 11px;
   font-weight: 800;
   line-height: 16px;
+  margin-bottom: 0;
+}
+
+.ozon-assistant-section > .section-kicker {
   margin-bottom: 8px;
+}
+
+.section-header-line .section-kicker {
+  margin-bottom: 0;
 }
 
 .section-desc {
@@ -1534,7 +1554,8 @@ onUnmounted(() => {});
 
 .env-check-list {
   display: grid;
-  gap: 7px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .env-check-row {
@@ -1544,6 +1565,50 @@ onUnmounted(() => {});
   gap: 8px;
   color: #64748b;
   font-size: 12px;
+}
+
+.assistant-mini-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-mini-btn {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d6e3f3;
+  border-radius: 8px;
+  padding: 0 11px;
+  color: #475569;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all 0.16s ease;
+}
+
+.assistant-mini-btn:hover:not(:disabled) {
+  border-color: #bfdbfe;
+  color: #2563eb;
+  background: #f8fbff;
+}
+
+.assistant-mini-btn.is-primary {
+  border-color: #c7d9ff;
+  color: #1d4ed8;
+  background: #eef5ff;
+}
+
+.assistant-mini-btn.is-primary:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #e0edff;
+}
+
+.assistant-mini-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .worker-record-panel {

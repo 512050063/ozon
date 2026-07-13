@@ -54,6 +54,40 @@ export const createWorkerRegistration = async (userId: number, name: string) => 
   };
 };
 
+export const refreshWorkerRegistration = async (userId: number, name = '本机采集器') => {
+  const token = createRawWorkerToken();
+  const normalizedName = name.trim() || '本机采集器';
+  const existingWorker = await prisma.ozonBrowserWorker.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const data = {
+    name: normalizedName,
+    tokenHash: hashWorkerToken(token),
+    status: 'offline',
+    capabilities: null as any,
+    lastSeenAt: null,
+  };
+
+  const worker = existingWorker
+    ? await prisma.ozonBrowserWorker.update({
+        where: { id: existingWorker.id },
+        data,
+      })
+    : await prisma.ozonBrowserWorker.create({
+        data: {
+          userId,
+          ...data,
+        },
+      });
+
+  return {
+    token,
+    worker: toPublicWorker(worker),
+  };
+};
+
 export const authenticateWorkerToken = async (token: string): Promise<WorkerIdentity | null> => {
   const normalizedToken = token.trim();
   if (!normalizedToken.startsWith(WORKER_TOKEN_PREFIX)) {

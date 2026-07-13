@@ -68,7 +68,7 @@ If the local assistant is not detected, show the command to start it:
 py worker/ozon-assistant.py --host 127.0.0.1 --port 17666
 ```
 
-If the assistant is detected, `生成令牌` generates the cloud worker token and posts the config to `/worker/start`.
+If the assistant is detected, `更新令牌` refreshes the cloud worker token and posts the config to `/worker/start`.
 
 ### Task 3: Verification And Deployment
 

@@ -10,6 +10,7 @@ import {
   getTaskForUser,
   getUserWorkers,
   heartbeat,
+  refreshWorkerRegistration,
   startTask,
   WorkerIdentity,
 } from '../services/ozonBrowserTaskService';
@@ -49,6 +50,17 @@ export const createWorker = async (req: Request, res: Response) => {
     res.json({ success: true, data, message: '本机采集器已创建，请保存令牌' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || '创建采集器失败' });
+  }
+};
+
+export const refreshWorker = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const name = typeof req.body?.name === 'string' ? req.body.name : '本机采集器';
+    const data = await refreshWorkerRegistration(userId, name);
+    res.json({ success: true, data, message: '本机采集器令牌已更新' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || '更新采集器失败' });
   }
 };
 

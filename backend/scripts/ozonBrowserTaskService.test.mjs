@@ -16,6 +16,7 @@ const servicePath = path.join(root, 'backend/src/services/ozonBrowserTaskService
 assert.ok(fs.existsSync(servicePath), 'ozon browser task service should exist');
 const service = fs.readFileSync(servicePath, 'utf8');
 assert.match(service, /createWorkerRegistration/);
+assert.match(service, /refreshWorkerRegistration/);
 assert.match(service, /hashWorkerToken/);
 assert.match(service, /authenticateWorkerToken/);
 assert.match(service, /claimNextTask/);
@@ -29,3 +30,6 @@ assert.match(app, /workerRoutes/);
 assert.match(app, /app\.use\('\/api\/ozon\/browser'/);
 assert.match(app, /app\.use\('\/api\/worker'/);
 assert.match(app, /req\.path\.startsWith\('\/worker'\)/);
+
+const routes = fs.readFileSync(path.join(root, 'backend/src/routes/ozonBrowserTaskRoutes.ts'), 'utf8');
+assert.match(routes, /router\.put\('\/workers\/default', refreshWorker\)/);

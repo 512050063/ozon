@@ -123,7 +123,7 @@ def handle_env_check(handler: BaseHTTPRequestHandler):
         "workerConfig": {
             "ok": CONFIG_FILE.exists(),
             "value": str(CONFIG_FILE),
-            "hint": "点击生成令牌后会自动写入配置",
+            "hint": "点击更新令牌后会自动写入配置",
         },
     }
     json_response(handler, 200, {"success": True, "data": checks})

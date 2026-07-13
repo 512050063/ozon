@@ -12,7 +12,7 @@
 py worker/ozon-assistant.py --host 127.0.0.1 --port 17666
 ```
 
-启动后回到云端 `API配置 > Ozon平台`，点击“生成令牌”。如果页面检测到本机助手，会自动写入 `worker/worker.config.json` 并启动采集器。
+启动后回到云端 `API配置 > Ozon平台`，点击“更新令牌”。如果页面检测到本机助手，会自动写入 `worker/worker.config.json` 并启动采集器。
 
 助手接口：
 
@@ -24,7 +24,7 @@ py worker/ozon-assistant.py --host 127.0.0.1 --port 17666
 
 ## 手动方式
 
-如果不启动本机助手，也可以手动运行。云端页面创建采集器后，会得到一次性 `workerToken`。本机创建 `worker/worker.config.json`：
+如果不启动本机助手，也可以手动运行。云端页面更新采集器令牌后，会得到一次性 `workerToken`。本机创建 `worker/worker.config.json`：
 
 ```json
 {
