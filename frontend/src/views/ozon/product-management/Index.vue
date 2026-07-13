@@ -448,8 +448,10 @@ const handleArchiveConfirm = async () => {
     return;
   }
 
-  archiveConfirmLoading.value = true;
   setArchiveOperationProcessing(productId, type, true);
+  archiveConfirmVisible.value = false;
+  archiveConfirmProduct.value = null;
+  archiveConfirmType.value = 'archive';
   ElMessage.info(type === 'archive' ? '已提交归档请求，正在处理...' : '已提交取消归档请求，正在处理...');
 
   try {
@@ -466,8 +468,6 @@ const handleArchiveConfirm = async () => {
     }
   } finally {
     archiveConfirmLoading.value = false;
-    archiveConfirmVisible.value = false;
-    resetArchiveConfirm();
   }
 };
 // ״̬ɸ

@@ -234,13 +234,6 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showPaymentModalVisible = false">
       <div class="payment-modal bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl relative">
-        <!-- 套餐标签图标 -->
-        <div :class="[
-          'absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg z-10',
-          getPlanBadgeClass(paymentPlan)
-        ]">
-          <span class="text-white text-xs font-bold">{{ getPlanBadgeText(paymentPlan) }}</span>
-        </div>
         <!-- 弹窗页头 -->
         <div class="app-surface-header mb-4">
           <div class="app-surface-icon">
@@ -496,20 +489,6 @@ const getPlanTypeName = (planType: string) => {
     trial: '试用版', free: '免费版', standard: '标准版', professional: '专业版',
   };
   return names[planType] || '未知';
-};
-
-const getPlanBadgeClass = (plan: string) => {
-  const classes: Record<string, string> = {
-    '试用版': 'bg-orange-500', '标准版': 'bg-blue-500', '专业版': 'bg-purple-500',
-  };
-  return classes[plan] || 'bg-slate-500';
-};
-
-const getPlanBadgeText = (plan: string) => {
-  const texts: Record<string, string> = {
-    '试用版': '试用', '标准版': '标准', '专业版': '专业',
-  };
-  return texts[plan] || plan;
 };
 
 const getPaymentMethodName = (method: string) => {

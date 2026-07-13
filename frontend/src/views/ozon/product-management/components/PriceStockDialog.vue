@@ -478,16 +478,6 @@ const handleSave = async () => {
   max-width: 580px;
 }
 
-:global(.price-stock-dialog-compact .app-dialog-body),
-:global(.price-stock-dialog-wide .app-dialog-body) {
-  padding: 0;
-}
-
-:global(.price-stock-dialog-compact .app-dialog-header),
-:global(.price-stock-dialog-wide .app-dialog-header) {
-  margin-bottom: 24px;
-}
-
 .price-stock-dialog {
   padding: 0;
   position: relative;
