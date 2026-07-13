@@ -1,10 +1,12 @@
 import assert from 'assert';
 import {
   applyCashFlowBalanceToTotals,
+  applyOfficialFinanceBreakdownToTotals,
   applyOfficialOpeningDebtToTotals,
   buildFinanceExpenseRows,
   calculateFinanceExpenseSplit,
   calculateDisplayedFinanceNetTotal,
+  estimatePartnerProgramFromOrderProduct,
   summarizeFinanceOperations,
 } from '../src/services/ozonFinanceService';
 
@@ -106,6 +108,17 @@ const operations = [
 ];
 
 const summary = summarizeFinanceOperations(operations as any);
+
+assert.equal(estimatePartnerProgramFromOrderProduct({
+  price: 19.9,
+  customer_price: 21.2,
+  quantity: 1,
+}), 1.3);
+assert.equal(estimatePartnerProgramFromOrderProduct({
+  price: 19.9,
+  customer_price: 212,
+  quantity: 1,
+}), 0);
 
 assert.equal(summary.accruals_for_sale, 276);
 assert.equal(summary.sale_commission, -33.12);
@@ -213,5 +226,57 @@ assert.equal(
   applyOfficialOpeningDebtToTotals(staleLocalOpeningDebt, { opening_debt: null }).opening_debt,
   -3594,
 );
+
+const localSalesBreakdown = {
+  ...summary,
+  accruals_for_sale: 645,
+  sales_income: 254,
+  partner_program: 0,
+  discount_points: 391,
+};
+const officialSalesBreakdown = applyOfficialFinanceBreakdownToTotals(localSalesBreakdown, {
+  accruals_for_sale: 645,
+  sale_commission: -77,
+  processing_and_delivery: -45,
+  refunds_and_cancellations: -628,
+  sales_income: 254,
+  partner_program: 3,
+  discount_points: 388,
+  partner_services: 2,
+});
+assert.equal(officialSalesBreakdown.accruals_for_sale, 645);
+assert.equal(officialSalesBreakdown.sale_commission, -77);
+assert.equal(officialSalesBreakdown.processing_and_delivery, -45);
+assert.equal(officialSalesBreakdown.refunds_and_cancellations, -628);
+assert.equal(officialSalesBreakdown.sales_income, 254);
+assert.equal(officialSalesBreakdown.partner_program, 3);
+assert.equal(officialSalesBreakdown.discount_points, 388);
+assert.equal(officialSalesBreakdown.partner_services, 2);
+
+const officialRows = buildFinanceExpenseRows({
+  ...summary,
+  ...officialSalesBreakdown,
+});
+const officialRowsByKey = Object.fromEntries(officialRows.map(row => [row.key, row]));
+assert.equal(officialRowsByKey.other_services.value, -628);
+assert.equal(officialRowsByKey.ozon_commission.value, -77);
+assert.equal(officialRowsByKey.delivery.value, -45);
+assert.equal(officialRowsByKey.partner_services.value, 2);
+
+assert.equal(calculateDisplayedFinanceNetTotal({
+  ...summary,
+  accruals_for_sale: 645.49,
+  refunds_and_cancellations: 0,
+  sale_commission: -77,
+  processing_and_delivery: -45,
+  services_amount: -583.5,
+  compensation_amount: 0,
+  partner_services: 2.1,
+  ozon_delivery_services: 0,
+  whd_services: 0,
+  credit_services: 0,
+  others_amount: 0,
+  opening_debt: -3306.51,
+}), -3364);
 
 console.log('financeReportService.test passed');

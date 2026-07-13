@@ -23,8 +23,14 @@ assert.match(
 
 assert.match(
   serviceSource,
-  /summary\.discount_points = roundMoney\(Math\.max\(0, summary\.accruals_for_sale - orderSalesIncome\)\)/,
-  'discount points should be derived as accruals_for_sale minus order customer_price income'
+  /summary\.partner_program = roundMoney\(summary\.partner_program \+ partnerProgram\)/,
+  'partner program should be separated from order financial data before discount points are derived'
+);
+
+assert.match(
+  serviceSource,
+  /summary\.discount_points = roundMoney\(Math\.max\(0, summary\.accruals_for_sale - orderSalesIncome - partnerProgram\)\)/,
+  'discount points should be derived as accruals_for_sale minus order customer_price income and partner program'
 );
 
 console.log('financeSalesBreakdown.test passed');

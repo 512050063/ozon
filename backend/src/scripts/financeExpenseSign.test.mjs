@@ -21,19 +21,18 @@ assert.doesNotMatch(
 
 assert.match(
   serviceSource,
-  /return roundSignedDisplayValue\(salesAndReturns\)\s*\+\s*roundSignedDisplayValue\(expense\)\s*\+\s*roundSignedDisplayValue\(totals\.opening_debt\)/,
-  'displayed finance total should add signed expense rows'
+  /return roundSignedDisplayValue\(salesAndReturns \+ expense \+ safeAmount\(totals\.opening_debt\)\)/,
+  'displayed finance total should round the exact signed total once'
 );
 
 assert.match(
   frontendSource,
-  /formatExpenseAmount\(totalExpense\)/,
-  'frontend should format signed expense total without forcing a negative sign'
+  /roundSignedDisplayValue\(\s*salesAndReturns\.value \+ totalExpense\.value \+ safeNum\(totals\.value\.opening_debt\)\s*\)/,
+  'frontend finance total should round the exact signed total once'
 );
 
-assert.match(
-  frontendSource,
-  /formatExpenseAmount\(row\.value\)/,
+assert.ok(
+  frontendSource.includes('formatExpenseAmount(row.value)'),
   'frontend should format signed expense rows without forcing a negative sign'
 );
 

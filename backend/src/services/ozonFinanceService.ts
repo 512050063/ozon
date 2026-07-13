@@ -489,25 +489,77 @@ export function applyOfficialOpeningDebtToTotals(
   };
 }
 
-async function fetchOfficialOpeningDebtFast(storeId: number, dateFrom: string, dateTo: string): Promise<number | null> {
-  const store = await fetchStore(storeId);
-  const resp = await fetch(V3_TOTALS, {
-    method: 'POST',
-    headers: { 'Client-Id': store.clientId, 'Api-Key': store.apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      date: { from: `${dateFrom}T00:00:00.000Z`, to: `${dateTo}T23:59:59.999Z` },
-      transaction_type: 'all',
-    }),
-    signal: AbortSignal.timeout(3500),
-  });
+function readFiniteOfficialMoney(source: Record<string, unknown>, key: keyof FinanceTotals): number | null {
+  const value = source[key];
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  return roundMoney(Number(value));
+}
 
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`Ozon ${resp.status}: ${text.slice(0, 120)}`);
+export function applyOfficialFinanceBreakdownToTotals(
+  totals: FinanceTotals,
+  officialTotals: Partial<FinanceTotals> | Record<string, unknown> | null | undefined
+): FinanceTotals {
+  if (!officialTotals) return totals;
+  const source = officialTotals as Record<string, unknown>;
+  const officialKeys: Array<keyof FinanceTotals> = [
+    'accruals_for_sale',
+    'sale_commission',
+    'processing_and_delivery',
+    'refunds_and_cancellations',
+    'services_amount',
+    'compensation_amount',
+    'sales_income',
+    'partner_program',
+    'discount_points',
+    'partner_services',
+    'ozon_delivery_services',
+    'whd_services',
+    'credit_services',
+    'money_transfer',
+    'others_amount',
+  ];
+
+  return officialKeys.reduce<FinanceTotals>((next, key) => {
+    const value = readFiniteOfficialMoney(source, key);
+    if (value == null) return next;
+    return { ...next, [key]: value };
+  }, totals);
+}
+
+async function fetchOfficialTotalsFast(
+  storeId: number,
+  dateFrom: string,
+  dateTo: string
+): Promise<Record<string, unknown> | null> {
+  const store = await fetchStore(storeId);
+  let lastErrorText = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(1200 * attempt);
+    const resp = await fetch(V3_TOTALS, {
+      method: 'POST',
+      headers: { 'Client-Id': store.clientId, 'Api-Key': store.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: { from: `${dateFrom}T00:00:00.000Z`, to: `${dateTo}T23:59:59.999Z` },
+        transaction_type: 'all',
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (resp.status === 429) {
+      lastErrorText = await resp.text().catch(() => '');
+      continue;
+    }
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Ozon ${resp.status}: ${text.slice(0, 120)}`);
+    }
+
+    const json = await resp.json();
+    return json.result || json;
   }
 
-  const json = await resp.json();
-  return readOfficialOpeningDebt(json.result || json);
+  throw new Error(`Ozon 429: ${lastErrorText.slice(0, 120)}`);
 }
 
 function roundSignedDisplayValue(value: number): number {
@@ -523,9 +575,7 @@ function roundAbsDisplayValue(value: number): number {
 export function calculateDisplayedFinanceNetTotal(totals: FinanceTotals): number {
   const salesAndReturns = safeAmount(totals.accruals_for_sale);
   const expense = buildFinanceExpenseRows(totals).reduce((sum, row) => sum + safeAmount(row.value), 0);
-  return roundSignedDisplayValue(salesAndReturns)
-    + roundSignedDisplayValue(expense)
-    + roundSignedDisplayValue(totals.opening_debt);
+  return roundSignedDisplayValue(salesAndReturns + expense + safeAmount(totals.opening_debt));
 }
 
 /**
@@ -779,10 +829,11 @@ export async function enrichTotalsWithOpeningDebt(
   const localEnriched = { ...totals, opening_debt: openingDebt };
 
   try {
-    const officialOpeningDebt = await fetchOfficialOpeningDebtFast(storeId, dateFrom, dateTo);
-    return applyOfficialOpeningDebtToTotals(localEnriched, { opening_debt: officialOpeningDebt });
+    const officialTotals = await fetchOfficialTotalsFast(storeId, dateFrom, dateTo);
+    const withOpeningDebt = applyOfficialOpeningDebtToTotals(localEnriched, officialTotals);
+    return applyOfficialFinanceBreakdownToTotals(withOpeningDebt, officialTotals);
   } catch (err: any) {
-    logger.warn(`[Finance Totals] 官方期初欠款获取失败，使用本地历史反推值: ${err.message}`);
+    logger.warn(`[Finance Totals] 官方汇总获取失败，使用本地历史反推值: ${err.message}`);
     return localEnriched;
   }
 }
@@ -1344,6 +1395,18 @@ function rowToOperationLike(row: any): FinanceOperationLike {
   };
 }
 
+export function estimatePartnerProgramFromOrderProduct(product: any): number {
+  const quantity = safeAmount(product?.quantity) || 1;
+  const customerPrice = safeAmount(product?.customer_price);
+  const sellerPrice = safeAmount(product?.price);
+  if (customerPrice <= sellerPrice || sellerPrice <= 0) return 0;
+
+  // Ozon sometimes stores seller price in a different scale/currency in order raw data.
+  // Small uplifts map to "partner program"; large gaps remain part of discount points.
+  if (customerPrice / sellerPrice > 2) return 0;
+  return roundMoney((customerPrice - sellerPrice) * quantity);
+}
+
 async function applyOrderFinancialDataToTotals(
   storeId: number,
   summary: FinanceTotals,
@@ -1367,17 +1430,21 @@ async function applyOrderFinancialDataToTotals(
 
   const usablePostings = new Set<string>();
   let orderSalesIncome = 0;
+  let partnerProgram = 0;
   for (const order of orders) {
     const products = (order.raw as any)?.financial_data?.products;
     if (!Array.isArray(products) || products.length === 0) continue;
     let postingIncome = 0;
+    let postingPartnerProgram = 0;
     for (const product of products) {
       const quantity = safeAmount(product?.quantity) || 1;
       postingIncome += safeAmount(product?.customer_price) * quantity;
+      postingPartnerProgram += estimatePartnerProgramFromOrderProduct(product);
     }
     if (postingIncome <= 0) continue;
     usablePostings.add(order.postingNumber);
     orderSalesIncome += postingIncome;
+    partnerProgram += postingPartnerProgram;
   }
 
   if (usablePostings.size !== orderPostingNumbers.size || orderSalesIncome <= 0) {
@@ -1385,7 +1452,8 @@ async function applyOrderFinancialDataToTotals(
   }
 
   summary.sales_income = roundMoney(orderSalesIncome);
-  summary.discount_points = roundMoney(Math.max(0, summary.accruals_for_sale - orderSalesIncome));
+  summary.partner_program = roundMoney(summary.partner_program + partnerProgram);
+  summary.discount_points = roundMoney(Math.max(0, summary.accruals_for_sale - orderSalesIncome - partnerProgram));
   return summary;
 }
 

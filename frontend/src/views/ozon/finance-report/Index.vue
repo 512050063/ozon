@@ -553,9 +553,9 @@ function getExpenseRowColor(label: string, index: number): string {
 
 const netTotal = computed(() => {
   if (!totals.value) return 0;
-  return roundSignedDisplayValue(salesAndReturns.value)
-    + roundSignedDisplayValue(totalExpense.value)
-    + roundSignedDisplayValue(totals.value.opening_debt);
+  return roundSignedDisplayValue(
+    salesAndReturns.value + totalExpense.value + safeNum(totals.value.opening_debt)
+  );
 });
 
 type SummaryColorRow = {
