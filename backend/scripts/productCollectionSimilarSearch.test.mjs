@@ -37,6 +37,7 @@ assert.match(productCollection, /unwrapDisplayImageUrl[\s\S]*?\/api\/images\/pro
 assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同类操作/, 'same-category search should be blocked when category matching is explicitly unverified')
 assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同款操作/, 'same-product image search should be blocked when category matching is explicitly unverified')
 assert.match(productCollection, /toImageSearchUrl[\s\S]*?new URL\(unwrapped, window\.location\.origin\)[\s\S]*?parsed\.href/, 'same-product image search should convert local display image paths to public absolute URLs before calling 1688')
+assert.match(productCollection, /findSameProducts[\s\S]*?mergeProductImages\([\s\S]*?product\.images[\s\S]*?product\.imageList[\s\S]*?product\.imageUrl[\s\S]*?\)\[0\]/, 'same-product image search should use the first valid collected image instead of only the single imageUrl field')
 assert.match(productCollection, /getImageSearchOrigin[\s\S]*?localhost:3000\/api/, 'same-product image search should know the backend API origin in local development')
 assert.match(productCollection, /isLocalManagedImagePath[\s\S]*?uploads[\s\S]*?images[\s\S]*?getImageSearchOrigin\(\)/, 'same-product image search should resolve local uploaded images against the backend API origin, not the Vite frontend origin')
 assert.doesNotMatch(productCollection, /applyKeywordFallbackForImageSearch|图搜无结果，已按商品名称搜索/, 'same-product image search should not silently fall back to keyword search')
@@ -48,5 +49,6 @@ assert.match(alibabaService, /fetchImageAsBase64/, 'image search should retry wi
 assert.match(alibabaService, /isWebpImageBuffer[\s\S]*?convertImageBufferToJpegBase64/, 'image search should convert downloaded WebP images before Base64 retry')
 assert.match(alibabaService, /canvas\.toDataURL\('image\/jpeg'/, 'image search should convert WebP to JPEG for 1688 image search')
 assert.match(alibabaService, /URL图搜失败，尝试下载图片并使用Base64重试跨境图搜/, 'image search should log the base64 retry path')
+assert.match(alibabaService, /collectAlibabaImageUrls[\s\S]*?d\.images[\s\S]*?d\.imageUrls[\s\S]*?d\.productImage\?\.images[\s\S]*?p\.images = mergedImages/, 'detail enrichment should merge detail images back into search results for carousel display')
 
 console.log('productCollectionSimilarSearch tests passed')

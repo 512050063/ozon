@@ -738,6 +738,24 @@ function parseProductList(items: any[]): any[] {
   });
 }
 
+function collectAlibabaImageUrls(...groups: any[]): string[] {
+  const images: string[] = [];
+  const pushImg = (value: any) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach(pushImg);
+      return;
+    }
+    const url = typeof value === 'object'
+      ? (value?.url || value?.imageUrl || value?.image_url || value?.imgUrl || value?.src || '')
+      : String(value || '');
+    const normalized = String(url || '').trim();
+    if (normalized && !images.includes(normalized)) images.push(normalized);
+  };
+  groups.forEach(pushImg);
+  return images;
+}
+
 /**
  * 用商品详情接口补全图搜结果中缺失的字段（质量评分、公司信息等）
  * 图搜API只返回基础字段，详情接口返回完整数据
@@ -841,6 +859,25 @@ async function enrichProductsWithDetail(userId: number, products: any[]): Promis
       if (detailOfferId && /^\d+$/.test(detailOfferId) && (!p.id || !/^\d+$/.test(String(p.id)))) {
         p.id = detailOfferId;
         p.productId = detailOfferId;
+      }
+
+      const mergedImages = collectAlibabaImageUrls(
+        p.image,
+        p.image_url,
+        p.imageUrl,
+        p.images,
+        d.images,
+        d.imageUrls,
+        d.image_urls,
+        d.productImage?.images,
+        d.offerImage?.images,
+        d.imageInfo?.images,
+      );
+      if (mergedImages.length > 0) {
+        p.images = mergedImages;
+        p.image = p.image || mergedImages[0];
+        p.image_url = p.image_url || mergedImages[0];
+        p.imageUrl = p.imageUrl || mergedImages[0];
       }
 
       products[targetIdx] = p;

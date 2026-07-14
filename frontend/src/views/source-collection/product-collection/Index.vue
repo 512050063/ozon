@@ -712,7 +712,13 @@ const findSameProducts = async (product: any) => {
   drawerTitle.value = '同款商品';
   similarDrawerVisible.value = true;
   // 使用商品图片URL进行图片搜索
-  const imageUrl = toImageSearchUrl(product.imageUrl || product.image || product.image_url);
+  const imageUrl = toImageSearchUrl(mergeProductImages(
+    product.images,
+    product.imageList,
+    product.imageUrl,
+    product.image,
+    product.image_url,
+  )[0]);
   searchSameProductsByImage(imageUrl);
 };
 // 搜同- 关键词搜索（直接搜商品名，首页后由无限滚动翻页）
