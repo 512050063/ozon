@@ -116,6 +116,9 @@ async function main() {
         imageFindArgs.push(args);
         return [{ id: 11 }, { id: 12 }];
       },
+      async createMany(args: unknown) {
+        writes.push(["imageCreateMany", args]);
+      },
     },
     imageReference: tx.imageReference,
   };
@@ -132,6 +135,7 @@ async function main() {
     where: {
       bizType: "product",
       provider: "local",
+      userId: 7,
       OR: [
         { fileUrl: { contains: "https://site.test/uploads/images/a.png" } },
         { fileUrl: { contains: "/uploads/images/a.png" } },

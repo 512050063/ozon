@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 export const IMAGE_BIZ_TYPES = ["avatar", "product"] as const;
 export const IMAGE_PROVIDERS = ["local"] as const;
 
@@ -44,6 +46,7 @@ type ImageReferenceWriter = {
 type ProductSupplyImageReferenceSyncDb = ImageReferenceWriter & {
   image: {
     findMany(args: unknown): Promise<Array<{ id: number }>>;
+    createMany(args: unknown): Promise<unknown>;
   };
   productSupply: {
     findMany(args: unknown): Promise<Array<{ id: number; imageUrl: unknown; images: unknown }>>;
@@ -132,7 +135,7 @@ export const replaceImageReferences = async (
     return [];
   }
 
-  await tx.imageReference.createMany({ data });
+  await tx.imageReference.createMany({ data, skipDuplicates: true } as any);
 
   return data;
 };
@@ -153,6 +156,30 @@ const normalizeImageUrlCandidates = (url: string): string[] => {
   const values = [url.trim(), stripOrigin(url)].filter(isNonEmptyString);
   return values.filter((item, index) => values.indexOf(item) === index);
 };
+
+const getImageFileNameFromUrl = (url: string): string => {
+  const fallback = `product-image-${crypto.createHash('sha1').update(url).digest('hex').slice(0, 12)}`;
+  try {
+    const parsed = new URL(url, 'http://local.invalid');
+    const fileName = decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() || '');
+    return fileName || fallback;
+  } catch {
+    const fileName = decodeURIComponent(url.split('?')[0].split('#')[0].split('/').filter(Boolean).pop() || '');
+    return fileName || fallback;
+  }
+};
+
+const inferImageFileType = (url: string): string => {
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  if (cleanUrl.endsWith('.png')) return 'image/png';
+  if (cleanUrl.endsWith('.gif')) return 'image/gif';
+  if (cleanUrl.endsWith('.webp')) return 'image/webp';
+  if (cleanUrl.endsWith('.avif')) return 'image/avif';
+  return 'image/jpeg';
+};
+
+export const buildProductImageProviderAssetId = (url: string): string =>
+  `product-url:${crypto.createHash('sha1').update(url.trim()).digest('hex')}`;
 
 const collectImageUrlsFromValue = (value: unknown, result: string[]) => {
   if (isNonEmptyString(value)) {
@@ -205,6 +232,7 @@ export async function findProductImageIdsByUrls(
     where: {
       bizType: "product",
       provider: "local",
+      ...(input.userId ? { userId: input.userId } : {}),
       OR: candidates.map(url => ({
         fileUrl: {
           contains: url,
@@ -219,10 +247,76 @@ export async function findProductImageIdsByUrls(
   return records.map(record => record.id);
 }
 
+export async function ensureProductImagesForReferences(
+  db: {
+    image: {
+      findMany(args: unknown): Promise<Array<{ id: number; fileUrl?: unknown; providerAssetId?: unknown }>>;
+      createMany(args: unknown): Promise<unknown>;
+    };
+  },
+  input: {
+    userId: number;
+    imageUrl?: unknown;
+    images?: unknown;
+  },
+): Promise<number[]> {
+  const urls = collectProductImageUrls(input);
+  if (urls.length === 0) {
+    return [];
+  }
+
+  const providerAssetIds = urls.map(url => buildProductImageProviderAssetId(url));
+  const urlCandidates = urls.flatMap(normalizeImageUrlCandidates);
+  const existingRecords = await db.image.findMany({
+    where: {
+      userId: input.userId,
+      bizType: "product",
+      provider: "local",
+      OR: [
+        { providerAssetId: { in: providerAssetIds } },
+        ...urlCandidates.map(url => ({ fileUrl: { contains: url } })),
+      ],
+    },
+    select: {
+      id: true,
+      fileUrl: true,
+      providerAssetId: true,
+    },
+  });
+
+  const missingUrls = urls.filter(url => {
+    const providerAssetId = buildProductImageProviderAssetId(url);
+    const candidates = normalizeImageUrlCandidates(url);
+    return !existingRecords.some(record =>
+      record.providerAssetId === providerAssetId ||
+      candidates.some(candidate => String(record.fileUrl || '').includes(candidate))
+    );
+  });
+
+  if (missingUrls.length > 0) {
+    await db.image.createMany({
+      data: missingUrls.map(url => ({
+        userId: input.userId,
+        bizType: "product",
+        provider: "local",
+        providerAssetId: buildProductImageProviderAssetId(url),
+        fileName: getImageFileNameFromUrl(url),
+        fileUrl: url,
+        fileSize: 0,
+        fileType: inferImageFileType(url),
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  return findProductImageIdsByUrls(db, input);
+}
+
 export async function replaceProductSupplyImageReferences(
   db: ImageReferenceWriter & {
     image: {
       findMany(args: unknown): Promise<Array<{ id: number }>>;
+      createMany(args: unknown): Promise<unknown>;
     };
   },
   input: {
@@ -232,7 +326,7 @@ export async function replaceProductSupplyImageReferences(
     images?: unknown;
   },
 ) {
-  const imageIds = await findProductImageIdsByUrls(db, {
+  const imageIds = await ensureProductImagesForReferences(db, {
     userId: input.userId,
     imageUrl: input.imageUrl,
     images: input.images,
@@ -252,6 +346,9 @@ export async function syncProductSupplyImageReferences(
   userId: number,
 ): Promise<{ productCount: number; referenceCount: number }> {
   const products = await db.productSupply.findMany({
+    where: {
+      userId,
+    },
     select: {
       id: true,
       imageUrl: true,
