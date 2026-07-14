@@ -191,13 +191,14 @@ export async function getOzonHotProducts(
 export async function batchExtractTypes(
   urls: string[],
   titles?: Record<string, string>
-): Promise<{ success: boolean; data: { total: number; started: boolean }; message: string }> {
+): Promise<{ success: boolean; data: { total: number; started: boolean; message?: string }; message: string }> {
   const response: any = await request.post('/ozon/type/batch-extract', { urls, titles });
   return {
     success: response.success,
     data: response.data || {
       total: response.total || 0,
       started: Boolean(response.started),
+      message: response.message || '',
     },
     message: response.message || '',
   };
@@ -214,7 +215,7 @@ export async function getBatchExtractStatus(): Promise<{
     total: number;
     done: number;
     error: number;
-    results: Array<{ url: string; type: string; title?: string; status: string }>;
+    results: Array<{ url: string; type: string; title?: string; status: string; message?: string }>;
   };
   message: string;
 }> {

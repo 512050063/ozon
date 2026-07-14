@@ -69,7 +69,7 @@ export const batchExtractTypes = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       ...result,
-      message: `已开始后台批量提取 ${result.total} 个商品的类型`,
+      message: result.message || `已开始后台批量提取 ${result.total} 个商品的类型`,
     });
   } catch (error: any) {
     logger.error('批量提取失败:', error);

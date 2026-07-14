@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(process.cwd(), '..');
+const __filename = fileURLToPath(import.meta.url);
+const root = path.resolve(path.dirname(__filename), '../..');
 const routes = fs.readFileSync(path.join(root, 'backend/src/routes/workerRoutes.ts'), 'utf8');
 const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/ozonBrowserTaskController.ts'), 'utf8');
 const taskService = fs.readFileSync(path.join(root, 'backend/src/services/ozonBrowserTaskService.ts'), 'utf8');

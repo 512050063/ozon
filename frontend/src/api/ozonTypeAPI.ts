@@ -10,6 +10,7 @@ export interface ExtractTypeResult {
 export interface BatchExtractResult {
   total: number;
   started: boolean;
+  message?: string;
 }
 
 export interface BatchStatusResult {
@@ -18,7 +19,7 @@ export interface BatchStatusResult {
   pending: number;
   error: number;
   running: boolean;
-  results: Array<{ url: string; type: string; title?: string; status: string }>;
+  results: Array<{ url: string; type: string; title?: string; status: string; message?: string }>;
 }
 
 /**
@@ -43,6 +44,7 @@ export async function batchExtractTypes(urls: string[], titles?: Record<string, 
     data: response.data || {
       total: response.total || 0,
       started: Boolean(response.started),
+      message: response.message || '',
     },
   };
 }

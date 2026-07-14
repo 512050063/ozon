@@ -257,6 +257,7 @@ interface ProductWithType {
   productUrl: string;
   stock: number;
   productType: string;
+  typeErrorMessage?: string;
 }
 
 interface ProductSelectionSavePayload extends ProductWithType {
@@ -264,7 +265,7 @@ interface ProductSelectionSavePayload extends ProductWithType {
   typeId?: number | null;
 }
 
-type TypeExtractionResult = { url: string; type: string; title?: string; status: string };
+type TypeExtractionResult = { url: string; type: string; title?: string; status: string; message?: string };
 
 // 搜索相关状态
 const searchKeyword = ref('');
@@ -565,6 +566,7 @@ const toProductWithType = (item: any): ProductWithType => ({
   productUrl: item.productUrl || '',
   stock: item.stock || 0,
   productType: item.productType || '',
+  typeErrorMessage: item.typeErrorMessage || '',
 });
 
 const extractProductsFromWorkerResult = (result: any) => {
@@ -649,21 +651,38 @@ const hasDetailTitle = (title?: string) => {
 
 const applyTypeResultsToProducts = (results: TypeExtractionResult[]) => {
   let applied = 0;
-  for (const r of results) {
-    const idx = findProductIndexByUrl(r.url);
-    if (idx === -1) continue;
+  const resultMap = new Map<string, TypeExtractionResult>();
+  for (const result of results) {
+    resultMap.set(result.url, result);
+    resultMap.set(getUrlPathname(result.url), result);
+  }
 
+  products.value = products.value.map((product) => {
+    const r = resultMap.get(product.productUrl) || resultMap.get(getUrlPathname(product.productUrl));
+    if (!r) return product;
+
+    let nextProduct = product;
     let changed = false;
-    if (r.title && hasDetailTitle(r.title) && products.value[idx].name !== r.title.trim()) {
-      products.value[idx].name = r.title.trim();
+    if (r.title && hasDetailTitle(r.title) && nextProduct.name !== r.title.trim()) {
+      nextProduct = { ...nextProduct, name: r.title.trim() };
       changed = true;
     }
-    if (r.status === 'done' && r.type && products.value[idx].productType !== r.type) {
-      products.value[idx].productType = r.type;
+    if (r.status === 'done' && r.type && (nextProduct.productType !== r.type || nextProduct.typeErrorMessage)) {
+      nextProduct = { ...nextProduct, productType: r.type, typeErrorMessage: '' };
+      changed = true;
+    } else if (r.status === 'error') {
+      const message = r.message || '类型获取失败';
+      if (!nextProduct.productType && nextProduct.typeErrorMessage !== message) {
+        nextProduct = { ...nextProduct, typeErrorMessage: message };
+        changed = true;
+      }
+    } else if (r.status === 'pending' && nextProduct.typeErrorMessage) {
+      nextProduct = { ...nextProduct, typeErrorMessage: '' };
       changed = true;
     }
     if (changed) applied++;
-  }
+    return nextProduct;
+  });
   return applied;
 };
 
@@ -750,22 +769,24 @@ const startBackgroundTypeExtraction = async (keyword: string, category: string |
 
     let cachedDone = 0;
     const needExtract: string[] = [];
+    const cachedToApply: TypeExtractionResult[] = [];
     for (const url of urlsToExtract) {
       const cached = cachedResults.get(url) || cachedResults.get(getUrlPathname(url));
       if (cached) {
-        const idx = findProductIndexByUrl(url);
-        if (idx !== -1) {
-          if (cached.title && hasDetailTitle(cached.title)) {
-            products.value[idx].name = cached.title.trim();
-          }
-          if (cached.status === 'done' && cached.type) {
-            products.value[idx].productType = cached.type;
-          }
+        if (findProductIndexByUrl(url) !== -1) {
+          cachedToApply.push(cached);
           cachedDone++;
         }
       } else {
+        const idx = findProductIndexByUrl(url);
+        if (idx !== -1) {
+          products.value[idx].typeErrorMessage = '';
+        }
         needExtract.push(url);
       }
+    }
+    if (cachedToApply.length > 0) {
+      applyTypeResultsToProducts(cachedToApply);
     }
 
     extractedCount.value = cachedDone;
@@ -796,6 +817,11 @@ const startBackgroundTypeExtraction = async (keyword: string, category: string |
     const batchResult = await batchExtractTypes(needExtract, fallbackTitles);
     if (!batchResult.success) {
       throw new Error(batchResult.message || '类型提取启动失败');
+    }
+    if (!batchResult.data?.started) {
+      await restoreProductTypesFromCache();
+      ElMessage.warning(batchResult.data?.message || batchResult.message || '类型提取未启动');
+      return;
     }
     await pollTypeExtraction(keyword, category, runId, cachedDone);
   } catch (extractError: any) {

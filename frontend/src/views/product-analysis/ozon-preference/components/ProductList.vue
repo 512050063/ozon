@@ -60,7 +60,9 @@
                       <span class="w-3 h-3 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></span>
                       类型获取中
                     </span>
-                    <span v-else class="text-xs text-red-400">类型获取失败</span>
+                    <span v-else class="text-xs text-red-400" :title="product.typeErrorMessage || '类型获取失败'">
+                      {{ product.typeErrorMessage || '类型获取失败' }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -125,6 +127,7 @@ interface ProductWithType {
   productUrl: string;
   stock: number;
   productType: string;
+  typeErrorMessage?: string;
 }
 
 // Props

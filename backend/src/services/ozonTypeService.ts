@@ -225,7 +225,7 @@ const markPendingTypesAsError = (message: string) => {
   }
 };
 
-export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<string, string> = {}, userId?: number): Promise<{ total: number; started: boolean }> => {
+export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<string, string> = {}, userId?: number): Promise<{ total: number; started: boolean; message?: string }> => {
   const normalizedUrls = Array.from(new Set((urls || []).map(url => String(url || '').trim()).filter(Boolean)));
   if (normalizedUrls.length === 0) {
     return { total: 0, started: false };
@@ -244,7 +244,7 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
 
   if (batchRunning) {
     logger.warn('已有批量提取任务正在运行，跳过新的请求');
-    return { total: normalizedUrls.length, started: false };
+    return { total: normalizedUrls.length, started: false, message: '已有类型提取任务正在运行' };
   }
 
   batchRunning = true;
@@ -263,16 +263,18 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
   if (shouldUseLocalWorker()) {
     if (!userId) {
       batchRunning = false;
-      markPendingTypesAsError('当前登录状态无效，无法启动本机采集器类型任务');
+      const message = '当前登录状态无效，无法启动本机采集器类型任务';
+      markPendingTypesAsError(message);
       saveTypeCacheToFile();
-      return { total, started: false };
+      return { total, started: false, message };
     }
 
     if (!(await hasActiveWorkerForUser(userId))) {
       batchRunning = false;
-      markPendingTypesAsError('本机采集器未在线，无法获取商品类型');
+      const message = '本机采集器未在线，无法获取商品类型';
+      markPendingTypesAsError(message);
       saveTypeCacheToFile();
-      return { total, started: false };
+      return { total, started: false, message };
     }
 
     const task = await createBrowserTask(userId, {
@@ -406,7 +408,7 @@ export const getBatchExtractStatus = async () => {
   const total = statusUrls.length;
   let done = 0;
   let error = 0;
-  const results: Array<{url: string, type: string, title?: string, status: string}> = [];
+  const results: Array<{url: string, type: string, title?: string, status: string, message?: string}> = [];
 
   for (const url of statusUrls) {
     const info = typeCache.get(url);
@@ -417,7 +419,8 @@ export const getBatchExtractStatus = async () => {
       url,
       type: info.type,
       title: info.title,
-      status: info.status
+      status: info.status,
+      message: info.message,
     });
   }
 

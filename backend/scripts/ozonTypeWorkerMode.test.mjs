@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(process.cwd(), '..');
+const __filename = fileURLToPath(import.meta.url);
+const root = path.resolve(path.dirname(__filename), '../..');
 const service = fs.readFileSync(path.join(root, 'backend/src/services/ozonTypeService.ts'), 'utf8');
 const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/ozonTypeController.ts'), 'utf8');
 const worker = fs.readFileSync(path.join(root, 'worker/ozon-worker.py'), 'utf8');
@@ -19,7 +21,7 @@ assert.match(
 );
 assert.match(
   service,
-  /type:\s*'type_extract_batch'[\s\S]*payload:\s*\{ urls, titles: fallbackTitles \}/,
+  /type:\s*'type_extract_batch'[\s\S]*payload:\s*\{ urls: normalizedUrls, titles: fallbackTitles \}/,
   'batch type extraction should create a type_extract_batch worker task with titles for detail-page title backfill',
 );
 assert.match(
