@@ -1345,14 +1345,18 @@ const convertImageBufferToJpegBase64 = async (buffer: Buffer, contentType: strin
         image.onerror = () => reject(new Error('图片格式转换失败'));
       });
       const canvas = document.createElement('canvas');
-      canvas.width = image.naturalWidth || image.width;
-      canvas.height = image.naturalHeight || image.height;
+      const sourceWidth = image.naturalWidth || image.width;
+      const sourceHeight = image.naturalHeight || image.height;
+      const maxSide = 600;
+      const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+      canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+      canvas.height = Math.max(1, Math.round(sourceHeight * scale));
       const context = canvas.getContext('2d');
       if (!context) throw new Error('图片格式转换失败');
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-      return canvas.toDataURL('image/jpeg', 0.92);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.82);
     }, dataUrl);
     return jpegDataUrl.split(',')[1] || '';
   } finally {
@@ -1499,10 +1503,12 @@ export async function searchSimilarProductsByImage(
       };
     } catch (e: any) {
       logger.warn(`跨境图搜失败，降级到公开图搜接口: ${e.message}`);
+      let fallbackImageBase64 = imageBase64 || '';
       if (normalizedImageUrl && !imageBase64) {
         try {
           logger.warn('[image-search] URL图搜失败，尝试下载图片并使用Base64重试跨境图搜');
           const retryBase64 = await fetchImageAsBase64(normalizedImageUrl);
+          fallbackImageBase64 = retryBase64;
           const retryPayload: Record<string, any> = {
             beginPage: page,
             pageSize,
@@ -1549,9 +1555,12 @@ export async function searchSimilarProductsByImage(
         const params2: Record<string, any> = {
           access_token: token.access_token,
         };
-        // 公开图搜参数是扁平的，字段名是 imgUrl（不是 imageUrl）
-        if (normalizedImageUrl) params2.imgUrl = normalizedImageUrl;
-        if (imageBase64) params2.imgBase64 = imageBase64;
+        // 公开图搜参数是扁平的。优先使用已压缩转换的Base64，避免Ozon远程WebP/JPEG伪后缀被公开图搜拒绝。
+        if (fallbackImageBase64) {
+          params2.imgBase64 = fallbackImageBase64;
+        } else if (normalizedImageUrl) {
+          params2.imgUrl = normalizedImageUrl;
+        }
 
         const data2 = await call1688Api(
           userId,

@@ -48,7 +48,9 @@ assert.match(alibabaService, /p\.image_url[\s\S]*?p\.imageUrl[\s\S]*?p\.imgUrl[\
 assert.match(alibabaService, /fetchImageAsBase64/, 'image search should retry with base64 when remote URL search fails')
 assert.match(alibabaService, /isWebpImageBuffer[\s\S]*?convertImageBufferToJpegBase64/, 'image search should convert downloaded WebP images before Base64 retry')
 assert.match(alibabaService, /canvas\.toDataURL\('image\/jpeg'/, 'image search should convert WebP to JPEG for 1688 image search')
+assert.match(alibabaService, /const maxSide = 600[\s\S]*?canvas\.toDataURL\('image\/jpeg',\s*0\.82\)/, 'WebP conversion should resize and compress images before 1688 image search')
 assert.match(alibabaService, /URL图搜失败，尝试下载图片并使用Base64重试跨境图搜/, 'image search should log the base64 retry path')
+assert.match(alibabaService, /let fallbackImageBase64 = imageBase64[\s\S]*?fallbackImageBase64 = retryBase64[\s\S]*?params2\.imgBase64 = fallbackImageBase64/, 'public image-search fallback should reuse downloaded Base64 instead of retrying the rejected Ozon URL')
 assert.match(alibabaService, /collectAlibabaImageUrls[\s\S]*?d\.images[\s\S]*?d\.imageUrls[\s\S]*?d\.productImage\?\.images[\s\S]*?p\.images = mergedImages/, 'detail enrichment should merge detail images back into search results for carousel display')
 
 console.log('productCollectionSimilarSearch tests passed')
