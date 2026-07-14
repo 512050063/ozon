@@ -1,6 +1,6 @@
 # 系统架构
 
-> 基于 2026-07-11 实际代码结构提取
+> 基于 2026-07-14 实际代码结构提取
 
 ## 整体架构
 
@@ -27,7 +27,7 @@
         │  MySQL    │  │  Redis / 外部服务 │
         │  (Prisma) │  │  Ozon API       │
         │           │  │  1688 API       │
-        │  29 models│  │  微信 API       │
+        │  34 models│  │  微信 API       │
         └───────────┘  └────────────────┘
 ```
 
@@ -52,7 +52,7 @@ frontend/src/
 │   │   └── pricing-strategy/   # 定价策略
 │   ├── customer-service/   # 智能客服
 │   │   ├── auto-reply/        # 自动回复
-│   │   └── message-center/     # 消息中心
+│   │   └── message-center/     # 消息中心，店铺级 Ozon 会话/通知缓存
 │   ├── settings/           # 系统设置
 │   └── pages/              # 通用页面 (Login, VIP, NotFound)
 ├── components/ui/         # 通用 UI 组件库 (20 个)
@@ -128,6 +128,7 @@ User (用户)
 │   └── SupplySource (1688 货源)
 ├── AutoReplyRule (自动回复规则)
 ├── OzonPushEvent (Ozon 推送幂等记录)
+├── OzonMessageConversation / OzonMessageItem / OzonMessageSyncState (消息中心缓存)
 ├── PricingStrategy (定价策略)
 ├── Image (图片)
 │   └── ImageReference (图片使用关系)
@@ -158,6 +159,8 @@ User (用户)
 
 **1688 货源搜索**: Controller → alibabaService (1688 API OAuth) → 解析返回 → 入库 supply_sources/product_supplies
 
-**消息回复**: Controller → ozonMessageService (Ozon Chat API v1) → fetchWithTimeout + retry
+**消息中心**: Controller → ozonMessageService → MySQL 缓存优先 → 必要时 Ozon Chat API v1；`TYPE_NEW_MESSAGE` 推送会把会话标记为 stale，下次读取刷新
+
+**消息回复**: Controller → ozonMessageService (Ozon Chat API v1) → fetchWithTimeout + retry → 标记会话 stale
 
 **类型提取**: Controller → ozonTypeService (AI/规则) → 批量异步处理

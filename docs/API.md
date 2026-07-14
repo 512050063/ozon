@@ -1,6 +1,6 @@
 # API 接口参考
 
-> 基于 2026-07-11 `backend/src/app.ts` 和 `backend/src/routes/` 整理。当前后端共有 28 个路由模块；本文记录核心接口和模块入口，具体参数以对应 route/controller/service 为准。
+> 基于 2026-07-14 `backend/src/app.ts` 和 `backend/src/routes/` 整理。当前后端共有 28 个路由模块；本文记录核心接口和模块入口，具体参数以对应 route/controller/service 为准。
 
 ## 路由模块清单
 
@@ -24,7 +24,7 @@
 | ozon/crawler | `/api/ozon/crawler` | Ozon 页面搜索 |
 | ozon/cookie | `/api/ozon/cookie` | Ozon Cookie 获取/导入 |
 | ozon/search | `/api/ozon/search` | Ozon 搜索 |
-| ozon/messages | `/api/ozon/messages` | Ozon 消息 |
+| ozon/messages | `/api/ozon/messages` | Ozon 消息，会话/详情优先读取本地缓存 |
 | ozon/orders | `/api/ozon/orders` | Ozon 订单 |
 | ozon/finance | `/api/ozon/finance` | 财务流水 |
 | ozon/promotions | `/api/ozon/promotions` | 促销活动 |
@@ -110,9 +110,16 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /:storeId/conversations | 会话列表 |
-| GET | /:storeId/conversations/:conversationId | 消息历史 |
+| GET | /:storeId/conversations | 会话列表，支持 `limit`、`offset`、`unreadOnly`、`channel`、`refresh=true` |
+| GET | /:storeId/conversations/:conversationId | 消息历史，支持 `limit`、`refresh=true` |
 | POST | /:storeId/conversations/:conversationId/reply | 回复消息 |
+
+缓存说明：
+
+- 会话列表默认 60 秒缓存，消息历史默认 5 分钟缓存。
+- `refresh=true` 会强制请求 Ozon 并更新 `ozon_message_conversations` / `ozon_message_items`。
+- 收到 Ozon `TYPE_NEW_MESSAGE` 推送后，后端会把对应会话标记为待刷新。
+- 如果 Ozon API 临时失败且本地有缓存，接口返回缓存数据，避免前端切换 Tab 后空白。
 
 ## Ozon 爬虫 `/api/ozon/crawler`
 

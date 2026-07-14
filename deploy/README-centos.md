@@ -102,7 +102,18 @@ Schema changes are applied by:
 ```bash
 cd /opt/ozon/backend
 npx prisma db push --schema prisma/schema.prisma
+npx prisma generate --schema prisma/schema.prisma
 ```
+
+After any schema change, rebuild and restart the backend so the running process uses the regenerated Prisma Client:
+
+```bash
+cd /opt/ozon/backend
+npm run build
+pm2 restart ozon-backend --update-env
+```
+
+Recent examples that require this step include Ozon message-center cache tables such as `ozon_message_conversations`, `ozon_message_items`, and `ozon_message_sync_states`.
 
 ## 6. Baseline Data
 

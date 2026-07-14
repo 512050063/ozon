@@ -102,7 +102,7 @@ Routes (路由)     → 参数校验、调用 Controller
 - 复杂查询使用 `Prisma.$queryRaw`，简单查询使用链式 API
 - 字段更新优先使用 partial 对象解构避免遗漏
 - 表是否废弃以代码引用、业务职责和数据生命周期共同判断，不能只看是否为空
-- `wechat_login_sessions`、`ozon_push_events` 这类临时/事件表允许长期为空；删表前先检查 `schema.prisma`、`backend/src`、`frontend/src` 和当前文档
+- `wechat_login_sessions`、`ozon_push_events`、`ozon_message_conversations`、`ozon_message_items`、`ozon_message_sync_states` 这类临时/事件/缓存表允许长期为空；删表前先检查 `schema.prisma`、`backend/src`、`frontend/src` 和当前文档
 
 ```typescript
 // ✅ 推荐

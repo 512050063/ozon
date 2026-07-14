@@ -32,7 +32,7 @@ ozon/
 │   │   └── styles/              # 样式文件
 │   └── package.json
 ├── backend/                     # Express + Prisma 后端
-│   ├── prisma/schema.prisma     # 数据模型 (29 个 Prisma model)
+│   ├── prisma/schema.prisma     # 数据模型 (34 个 Prisma model)
 │   ├── src/
 │   │   ├── controllers/         # 控制器层 (26 个)
 │   │   ├── services/            # 服务层 (33 个)
@@ -97,7 +97,7 @@ npm run dev    # 监听 :5173
 | 商品管理 | 商品列表/详情、状态体系(5态7Tab)、价格库存行内编辑、促销活动商品管理 |
 | 订单与财务 | 订单同步、订单详情、财务流水、同步日志 |
 | 定价策略 | 基础价/运费/税率/利润率/平台费率配置 |
-| 智能客服 | 自动回复规则(关键词匹配)、消息中心(买家会话) |
+| 智能客服 | 自动回复规则(关键词匹配)、消息中心(店铺级 Ozon 会话/通知缓存) |
 | 系统设置 | 账号信息、角色权限(RBAC)、用户管理、API 配置 |
 | 会员系统 | 试用 / 免费 / 标准版 / 专业版 |
 
@@ -107,6 +107,7 @@ npm run dev    # 监听 :5173
 
 - 已移除：`collection_items`、`collection_item_images`、`product_items`、`product_item_images`、`ozon_listings`
 - 保留：`pricing_strategies`、`wechat_login_sessions`、`ozon_push_events`，这些表是有效业务表或运行期临时表，空表不代表废弃
+- 消息中心缓存：`ozon_message_conversations`、`ozon_message_items`、`ozon_message_sync_states` 保存店铺级 Ozon 会话和消息缓存，避免切换 Tab 时重复请求 Ozon；`TYPE_NEW_MESSAGE` 推送会标记会话待刷新
 - 详情见 [docs/DATABASE.md](./docs/DATABASE.md)
 
 详细文档见 [docs/](./docs/) 目录。
