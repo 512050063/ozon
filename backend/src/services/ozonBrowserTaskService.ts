@@ -4,7 +4,7 @@ import { saveOzonSearchCacheFromWorkerResult } from './ozonSearchService';
 
 const WORKER_TOKEN_PREFIX = 'owk_';
 const DEFAULT_TASK_TTL_MS = 15 * 60 * 1000;
-const MAX_TASK_ERROR_MESSAGE_LENGTH = 180;
+const MAX_TASK_ERROR_MESSAGE_LENGTH = 80;
 export const WORKER_HEARTBEAT_STALE_MS = 30 * 1000;
 
 export type OzonBrowserTaskType =

@@ -9,12 +9,14 @@ const root = path.resolve(__dirname, '../..')
 
 const productLinkServicePath = path.join(root, 'backend/src/services/ozonProductLinkService.ts')
 const typeServicePath = path.join(root, 'backend/src/services/ozonTypeService.ts')
+const taskServicePath = path.join(root, 'backend/src/services/ozonBrowserTaskService.ts')
 const crawlerApiPath = path.join(root, 'frontend/src/api/ozonCrawlerAPI.ts')
 const productByUrlScriptPath = path.join(root, 'backend/scripts/ozon/ozon_product_by_url.py')
 const typeBatchScriptPath = path.join(root, 'backend/scripts/ozon/ozon_extract_type_batch.py')
 
 const productLinkService = fs.readFileSync(productLinkServicePath, 'utf8')
 const typeService = fs.readFileSync(typeServicePath, 'utf8')
+const taskService = fs.readFileSync(taskServicePath, 'utf8')
 const crawlerApi = fs.readFileSync(crawlerApiPath, 'utf8')
 const productByUrlScript = fs.readFileSync(productByUrlScriptPath, 'utf8')
 const typeBatchScript = fs.readFileSync(typeBatchScriptPath, 'utf8')
@@ -41,5 +43,8 @@ const batchBody = typeService.match(/export const batchExtractTypes = async[\s\S
 assert.ok(batchBody, 'batch type extraction body should exist')
 assert.doesNotMatch(batchBody, /clearTypeCache\(\)/, 'starting a new batch should not clear persisted type cache for unrelated products')
 assert.match(typeService, /const statusUrls = batchRunning && activeBatchUrls\.length > 0/, 'batch status should report the active batch while it is running')
+
+assert.match(taskService, /const MAX_TASK_ERROR_MESSAGE_LENGTH = 80/, 'worker task error messages should be short enough for deployed database varchar limits')
+assert.match(taskService, /errorMessage: normalizeTaskErrorMessage\(errorMessage\)/, 'worker task failures should persist normalized error messages')
 
 console.log('ozonManualAddTypeLatency tests passed')
