@@ -131,11 +131,10 @@ export const getImages = async (req: Request, res: Response) => {
     const requestedBizType = bizType ? assertImageBizType(bizType) : undefined;
 
     if (!requestedBizType || requestedBizType === 'product') {
-      await syncProductSupplyImageReferences(prisma, userId);
+      await syncProductSupplyImageReferences(prisma);
     }
 
     const imageWhere = {
-      userId,
       provider: 'local' as const,
       ...(requestedBizType ? { bizType: requestedBizType } : {}),
       ...(usedStatus === 'used'
@@ -201,7 +200,6 @@ export const getImageStats = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const { bizType } = req.query;
     const imageWhere = {
-      userId,
       provider: 'local' as const,
       ...(bizType ? { bizType: assertImageBizType(bizType) } : {})
     };
@@ -332,7 +330,6 @@ export const deleteImage = async (req: Request, res: Response) => {
     const image = await prisma.image.findFirst({
       where: {
         id: imageId,
-        userId,
         provider: 'local'
       }
     });
@@ -418,7 +415,6 @@ export const batchDeleteImages = async (req: Request, res: Response) => {
     const images = await prisma.image.findMany({
       where: {
         id: { in: normalizedIds },
-        userId,
         provider: 'local'
       }
     });
@@ -461,7 +457,6 @@ export const batchDeleteImages = async (req: Request, res: Response) => {
     await prisma.image.deleteMany({
       where: {
         id: { in: images.map(image => image.id) },
-        userId,
         provider: 'local'
       }
     });

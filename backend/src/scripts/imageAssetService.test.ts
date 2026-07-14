@@ -135,7 +135,6 @@ async function main() {
     where: {
       bizType: "product",
       provider: "local",
-      userId: 7,
       OR: [
         { fileUrl: { contains: "https://site.test/uploads/images/a.png" } },
         { fileUrl: { contains: "/uploads/images/a.png" } },
@@ -158,13 +157,13 @@ async function main() {
     productSupply: {
       async findMany() {
         return [
-          { id: 1, imageUrl: "/uploads/images/a.png", images: ["/uploads/images/b.png"] },
-          { id: 2, imageUrl: "", images: [] },
+          { id: 1, userId: 7, imageUrl: "/uploads/images/a.png", images: ["/uploads/images/b.png"] },
+          { id: 2, userId: 8, imageUrl: "", images: [] },
         ];
       },
     },
   };
-  const result = await syncProductSupplyImageReferences(syncDb, 7);
+  const result = await syncProductSupplyImageReferences(syncDb);
   assert.equal(result.productCount, 2);
   assert.equal(result.referenceCount, 2);
 

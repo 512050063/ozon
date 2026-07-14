@@ -29,8 +29,8 @@ assert.match(
 
 assert.match(
   service,
-  /where:\s*\{\s*userId,/,
-  'product supply image sync should only scan the current user products',
+  /userId: Number\(product\.userId\)/,
+  'product supply image sync should preserve each product owner on usage references',
 );
 
 assert.match(
@@ -41,7 +41,7 @@ assert.match(
 
 assert.match(
   imageController,
-  /await syncProductSupplyImageReferences\(prisma, userId\)/,
+  /await syncProductSupplyImageReferences\(prisma\)/,
   'material library list should sync saved product images before reading images',
 );
 

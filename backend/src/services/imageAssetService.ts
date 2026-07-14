@@ -49,7 +49,7 @@ type ProductSupplyImageReferenceSyncDb = ImageReferenceWriter & {
     createMany(args: unknown): Promise<unknown>;
   };
   productSupply: {
-    findMany(args: unknown): Promise<Array<{ id: number; imageUrl: unknown; images: unknown }>>;
+    findMany(args: unknown): Promise<Array<{ id: number; userId: number; imageUrl: unknown; images: unknown }>>;
   };
 };
 
@@ -232,7 +232,6 @@ export async function findProductImageIdsByUrls(
     where: {
       bizType: "product",
       provider: "local",
-      ...(input.userId ? { userId: input.userId } : {}),
       OR: candidates.map(url => ({
         fileUrl: {
           contains: url,
@@ -343,14 +342,11 @@ export async function replaceProductSupplyImageReferences(
 
 export async function syncProductSupplyImageReferences(
   db: ProductSupplyImageReferenceSyncDb,
-  userId: number,
 ): Promise<{ productCount: number; referenceCount: number }> {
   const products = await db.productSupply.findMany({
-    where: {
-      userId,
-    },
     select: {
       id: true,
+      userId: true,
       imageUrl: true,
       images: true,
     },
@@ -360,7 +356,7 @@ export async function syncProductSupplyImageReferences(
 
   for (const product of products) {
     const references = await replaceProductSupplyImageReferences(db, {
-      userId: Number(userId),
+      userId: Number(product.userId),
       productSupplyId: product.id,
       imageUrl: product.imageUrl,
       images: product.images,
