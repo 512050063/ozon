@@ -15,9 +15,19 @@ const productCollectionPath = path.join(
   root,
   'frontend/src/views/source-collection/product-collection/Index.vue',
 )
+const addProductDrawerPath = path.join(
+  root,
+  'frontend/src/views/warehouse/product-library/components/AddProductDrawer.vue',
+)
+const productSupplyControllerPath = path.join(
+  root,
+  'backend/src/controllers/productSupplyController.ts',
+)
 
 const supplyManagement = fs.readFileSync(supplyManagementPath, 'utf8')
 const productCollection = fs.readFileSync(productCollectionPath, 'utf8')
+const addProductDrawer = fs.readFileSync(addProductDrawerPath, 'utf8')
+const productSupplyController = fs.readFileSync(productSupplyControllerPath, 'utf8')
 
 assert.match(
   supplyManagement,
@@ -31,8 +41,18 @@ assert.match(
 )
 assert.match(
   supplyManagement,
-  /:src="toDisplayImageUrl\(previewSource\.image\)"/,
-  'supply management preview images should proxy 1688 image URLs for display',
+  /v-for="\(\s*imageUrl,\s*imageIndex\s*\) in previewSourceImages"/,
+  'supply management URL preview should render all parsed source images',
+)
+assert.match(
+  supplyManagement,
+  /:src="toDisplayImageUrl\(imageUrl\)"[\s\S]*?class="source-preview-image"/,
+  'supply management URL preview images should proxy 1688 image URLs for display',
+)
+assert.match(
+  supplyManagement,
+  /@mouseenter="startPreviewImageCarousel"/,
+  'supply management URL preview should start the image carousel on hover',
 )
 
 assert.match(
@@ -49,6 +69,28 @@ assert.match(
   productCollection,
   /const productImageUrl = allProductImages\[0\] \|\| product\.image \|\| product\.image_url \|\| product\.imageUrl \|\| ''/,
   'source collection save should use the first merged image as the primary saved source image',
+)
+
+assert.match(
+  addProductDrawer,
+  /import AppImage from '@\/components\/ui\/AppImage\.vue'/,
+  'product library drawer should use the shared AppImage component',
+)
+assert.match(
+  addProductDrawer,
+  /<AppImage\s+:src="image"[\s\S]*?empty-text="暂无图片"/,
+  'product library drawer image slots should proxy remote images through AppImage',
+)
+
+assert.match(
+  productSupplyController,
+  /const resolvedImageUrl = imageUrl \|\| productImages\?\.\[0\] \|\| source\?\.image \|\| ''/,
+  'product supply create should fall back to the first image as primary imageUrl',
+)
+assert.match(
+  productSupplyController,
+  /const resolvedUpdateImageUrl = imageUrl !== undefined[\s\S]*?normalizeImageArray\(normalizedUpdateImages\)\[0\]/,
+  'product supply update should fall back to the first submitted image as primary imageUrl',
 )
 
 console.log('sourceCollectionSupplyManagementImages tests passed')

@@ -521,6 +521,7 @@ export const createProductSupplyItem = async (req: Request, res: Response) => {
     }
 
     const productImages = resolveProductSupplyImages(req.body.images, source, imageUrl);
+    const resolvedImageUrl = imageUrl || productImages?.[0] || source?.image || '';
     const normalizedBody = normalizeListingCategoryFields({
       category,
       categoryLeaf,
@@ -561,7 +562,7 @@ export const createProductSupplyItem = async (req: Request, res: Response) => {
         supplier: source?.supplierName || '',
         price: parseFloat(price.toString()) || 0,
         status: 'pending',
-        imageUrl: imageUrl || '',
+        imageUrl: resolvedImageUrl,
         ozonCategoryId: ozonCategoryId ? BigInt(ozonCategoryId) : null,
         description: description || '',
         barcode: req.body.barcode || null,
@@ -778,6 +779,10 @@ export const updateProductSupplyItem = async (req: Request, res: Response) => {
       typeId: typeId !== undefined ? typeId : existingItem.typeId,
       brand: brand !== undefined ? brand : existingItem.brand,
     });
+    const normalizedUpdateImages = images !== undefined ? images : existingItem.images;
+    const resolvedUpdateImageUrl = imageUrl !== undefined
+      ? (imageUrl || normalizeImageArray(normalizedUpdateImages)[0] || '')
+      : existingItem.imageUrl;
 
     const updatedItem = await prisma.productSupply.update({
       where: { id: Number(id) },
@@ -793,7 +798,7 @@ export const updateProductSupplyItem = async (req: Request, res: Response) => {
         supplier: supplier !== undefined ? supplier : existingItem.supplier,
         price: price !== undefined ? parseFloat(price.toString()) : existingItem.price,
         status: status !== undefined ? status : existingItem.status,
-        imageUrl: imageUrl !== undefined ? imageUrl : existingItem.imageUrl,
+        imageUrl: resolvedUpdateImageUrl,
         ozonCategoryId: ozonCategoryId !== undefined ? (ozonCategoryId ? BigInt(ozonCategoryId) : null) : existingItem.ozonCategoryId,
         description: description !== undefined ? description : existingItem.description,
         barcode: barcode !== undefined ? barcode : existingItem.barcode,
@@ -804,7 +809,7 @@ export const updateProductSupplyItem = async (req: Request, res: Response) => {
         grossWeight: grossWeight !== undefined ? parseNullableFloat(grossWeight) : existingItem.grossWeight,
         descriptionCategoryId: normalizedUpdateFields.descriptionCategoryId,
         typeId: normalizedUpdateFields.typeId,
-        images: images !== undefined ? images : existingItem.images,
+        images: normalizedUpdateImages,
         attributes: attributes !== undefined ? attributes : existingItem.attributes,
         variantAttributes: variantAttributes !== undefined ? variantAttributes : existingItem.variantAttributes,
         hiddenAttributes: hiddenAttributes !== undefined ? hiddenAttributes : existingItem.hiddenAttributes,

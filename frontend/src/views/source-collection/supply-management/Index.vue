@@ -127,9 +127,34 @@
         <div class="source-preview-box">
           <AppSkeletonLoader v-if="urlPreviewLoading" variant="card" :rows="2" compact />
           <template v-else>
-            <button v-if="previewSource" type="button" class="source-preview-card" @click="openSourceDetailUrl(previewSource)">
-              <img v-if="previewSource.image" :src="toDisplayImageUrl(previewSource.image)" class="source-preview-image" :alt="previewSource.subject" />
-              <div v-else class="source-preview-placeholder">1688</div>
+            <button
+              v-if="previewSource"
+              type="button"
+              class="source-preview-card"
+              @mouseenter="startPreviewImageCarousel"
+              @mouseleave="stopPreviewImageCarousel"
+              @click="openSourceDetailUrl(previewSource)"
+            >
+              <div class="source-preview-image-wrap">
+                <div v-if="previewSourceImages.length > 0" class="source-preview-carousel-strip" :style="getPreviewCarouselStripStyle()">
+                  <img
+                    v-for="(imageUrl, imageIndex) in previewSourceImages"
+                    :key="`preview-${imageIndex}`"
+                    :src="toDisplayImageUrl(imageUrl)"
+                    class="source-preview-image"
+                    :alt="previewSource.subject"
+                  />
+                </div>
+                <div v-else class="source-preview-placeholder">1688</div>
+                <div v-if="previewSourceImages.length > 1" class="source-preview-image-dots">
+                  <span
+                    v-for="(_, imageIndex) in previewSourceImages.slice(0, 5)"
+                    :key="imageIndex"
+                    class="source-preview-image-dot"
+                    :class="{ active: previewImageIndex === imageIndex }"
+                  ></span>
+                </div>
+              </div>
               <div class="source-preview-main">
                 <div class="source-preview-title" :title="previewSource.subject">
                   {{ previewSource.subject || '未命名货源' }}
@@ -217,6 +242,8 @@ const selectedSubCatId = ref<number | null>(null);
 const selectedTypeId = ref<number | null>(null);
 const imageCarouselIndexes = ref<Record<number, number>>({});
 const imageCarouselTimers = new Map<number, number>();
+const previewImageIndex = ref(0);
+let previewImageCarouselTimer: number | null = null;
 
 const canSubmitSource = computed(() => Boolean(
   previewSource.value
@@ -319,6 +346,8 @@ const getSourceImages = (source: SupplySource) => {
   return images;
 };
 
+const previewSourceImages = computed(() => previewSource.value ? getSourceImages(previewSource.value) : []);
+
 const getCarouselStripStyle = (source: SupplySource): Record<string, string> => {
   const index = imageCarouselIndexes.value[source.id] || 0;
   return {
@@ -346,6 +375,23 @@ const startImageCarousel = (source: SupplySource) => {
     };
   }, 900);
   imageCarouselTimers.set(source.id, timer);
+};
+
+const getPreviewCarouselStripStyle = (): Record<string, string> => ({
+  transform: `translateX(-${previewImageIndex.value * 100}%)`,
+});
+
+const stopPreviewImageCarousel = () => {
+  if (!previewImageCarouselTimer) return;
+  window.clearInterval(previewImageCarouselTimer);
+  previewImageCarouselTimer = null;
+};
+
+const startPreviewImageCarousel = () => {
+  if (previewSourceImages.value.length <= 1 || previewImageCarouselTimer) return;
+  previewImageCarouselTimer = window.setInterval(() => {
+    previewImageIndex.value = (previewImageIndex.value + 1) % previewSourceImages.value.length;
+  }, 900);
 };
 
 const getSourceDetailUrl = (source: Partial<SupplySource | SupplySourcePayload>) => {
@@ -427,6 +473,8 @@ const handleSearch = () => {
 const resetDialog = () => {
   urlInput.value = '';
   previewSource.value = null;
+  previewImageIndex.value = 0;
+  stopPreviewImageCarousel();
   categoryDialogVisible.value = false;
   categorySearchText.value = '';
   selectedCategoryPath.value = '';
@@ -448,6 +496,8 @@ const handlePreviewUrl = async () => {
   }
   urlPreviewLoading.value = true;
   previewSource.value = null;
+  previewImageIndex.value = 0;
+  stopPreviewImageCarousel();
   try {
     const result = await previewSupplySourceUrl(url);
     if (!result.success || !result.data) {
@@ -525,6 +575,7 @@ watch([hasMoreSources, () => sources.value.length], () => {
 onBeforeUnmount(() => {
   imageCarouselTimers.forEach(timer => window.clearInterval(timer));
   imageCarouselTimers.clear();
+  stopPreviewImageCarousel();
   if (scrollObserver) {
     scrollObserver.disconnect();
     scrollObserver = null;
@@ -860,13 +911,52 @@ onBeforeUnmount(() => {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
+.source-preview-image-wrap {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.source-preview-carousel-strip {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+
 .source-preview-image,
 .source-preview-placeholder {
   width: 108px;
   height: 108px;
-  border-radius: 8px;
+  flex: 0 0 100%;
   object-fit: cover;
   background: #f1f5f9;
+}
+
+.source-preview-image-dots {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.source-preview-image-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+}
+
+.source-preview-image-dot.active {
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.26);
 }
 
 .source-preview-placeholder,

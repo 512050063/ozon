@@ -50,7 +50,7 @@
             <div class="flex flex-wrap gap-3">
               <div v-for="(image, index) in imageUrls" :key="index"
                 class="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden border-2 border-dashed border-slate-300 relative group">
-                <img :src="image" :alt="`ͼƬ${index + 1}`" class="w-full h-full object-cover" />
+                <AppImage :src="image" :alt="`图片${index + 1}`" class="w-full h-full" error-text="加载失败" empty-text="暂无图片" />
                 <div
                   class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   @click="removeImage(index)">
@@ -453,6 +453,7 @@ import { getCategoryLeaf } from '@/utils/categoryText';
 import { getCurrentDateStr, getPinyinInitials } from '@/utils/common';
 import ImageGalleryPicker from '../../material-library/components/ImageGalleryPicker.vue';
 import CategorySelectDialog from '@/components/ui/CategorySelectDialog.vue';
+import AppImage from '@/components/ui/AppImage.vue';
 import AppSkeletonLoader from '@/components/ui/AppSkeletonLoader.vue';
 import AttributeField from './AttributeField.vue';
 import {
