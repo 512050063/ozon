@@ -21,7 +21,9 @@ assert.match(drawer, /quality_score/, 'similar products drawer should base quali
 assert.match(drawer, /product\.image_url/, 'similar products drawer should render backend image_url fields')
 assert.match(drawer, /product\.imageUrl/, 'similar products drawer should render backend imageUrl fields')
 assert.match(drawer, /product\.image\)/, 'similar products drawer should render backend image fields')
-assert.match(drawer, /toDisplayImageUrl\(imgUrl\)/, 'similar products drawer should proxy Alibaba CDN images for display')
+assert.match(drawer, /toDisplayImageUrl\(getPrimaryImage\(product\)\)/, 'similar products drawer should proxy Alibaba CDN images for display')
+assert.match(drawer, /getProductImages[\s\S]*?getPrimaryImage/, 'similar products drawer should resolve a static primary image from backend image fields')
+assert.doesNotMatch(drawer, /carousel-strip|carousel-slide-img|carouselStart|carouselStop|setCarouselIndex/, 'similar products drawer should show a static product image, not a marquee carousel')
 
 assert.match(productCollection, /getCategoryLeafText\(product\)[\s\S]*?searchKeyword/, 'same-category search should use the leaf category text instead of the full category path')
 assert.doesNotMatch(productCollection, /const searchKeyword = product\.category && product\.category\.trim\(\)[\s\S]*?\? product\.category\.trim\(\)/, 'same-category search should not send the full category path as the 1688 keyword')
@@ -32,6 +34,7 @@ assert.match(productCollection, /unwrapDisplayImageUrl[\s\S]*?\/api\/images\/pro
 assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同类操作/, 'same-category search should be blocked when category matching is explicitly unverified')
 assert.match(productCollection, /product\.categoryVerified === false[\s\S]*?请先设置并确认商品类型，再进行搜同款操作/, 'same-product image search should be blocked when category matching is explicitly unverified')
 assert.match(productCollection, /toImageSearchUrl[\s\S]*?new URL\(unwrapped, window\.location\.origin\)[\s\S]*?parsed\.href/, 'same-product image search should convert local display image paths to public absolute URLs before calling 1688')
+assert.doesNotMatch(productCollection, /applyKeywordFallbackForImageSearch|图搜无结果，已按商品名称搜索/, 'same-product image search should not silently fall back to keyword search')
 
 assert.doesNotMatch(alibabaService, /call1688Api\(userId,\s*'com\.alibaba\.fenxiao',\s*'product\.keywords\.search'/, 'fenxiao keyword search should not fall back to POST because POST can ignore keywords')
 assert.match(alibabaService, /filterRelevanceWithFallback/, 'keyword search should avoid returning too few items when relevance filtering is too aggressive')

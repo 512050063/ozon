@@ -35,32 +35,16 @@
         <div v-for="product in products" :key="product.id" class="similar-product-card">
           <div class="flex items-start gap-4">
             <!-- 商品主图 -->
-            <div
-              class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap"
-              @mouseenter="startCarousel(product)"
-              @mouseleave="stopCarousel(product)"
-            >
-              <div class="carousel-strip" :style="carouselStripStyle(product)">
-                <img
-                  v-for="(imgUrl, idx) in getCarouselImages(product)"
-                  :key="idx"
-                  :src="toDisplayImageUrl(imgUrl)"
-                  :alt="product.subject || product.name"
-                  class="carousel-slide-img"
-                />
-              </div>
+            <div class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap">
+              <img
+                v-if="getPrimaryImage(product)"
+                :src="toDisplayImageUrl(getPrimaryImage(product))"
+                :alt="product.subject || product.name"
+                class="similar-product-image"
+              />
               <!-- 占位图 -->
-              <div v-if="!getCarouselImages(product)[0]" class="img-placeholder-small">
+              <div v-else class="img-placeholder-small">
                 <el-icon size="24" color="#c0c4cc"><Picture /></el-icon>
-              </div>
-              <!-- 多图指示器 -->
-              <div v-if="getCarouselImages(product).length > 1" class="img-dots">
-                <span
-                  v-for="(_, idx) in getCarouselImages(product).slice(0, 5)"
-                  :key="idx"
-                  class="img-dot"
-                  :class="{ active: getCarouselIndex(product) === idx }"
-                ></span>
               </div>
             </div>
 
@@ -206,8 +190,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean];
   'load-more': [];
   addToLibrary: [product: any];
-  carouselStart: [product: any];
-  carouselStop: [product: any];
 }>();
 
 // 双向绑定桥接：modelValue prop → el-drawer v-model
@@ -265,11 +247,8 @@ onUnmounted(() => {
   cleanupObserver();
 });
 
-// 轮播索引映射
-const carouselIndexes = ref<Map<string, number>>(new Map());
-
-// 获取轮播图片
-const getCarouselImages = (product: any): string[] => {
+// 获取商品图片，静态展示第一张真实图片
+const getProductImages = (product: any): string[] => {
   const images: string[] = [];
   const push = (value: unknown) => {
     if (!value) return;
@@ -296,27 +275,8 @@ const getCarouselImages = (product: any): string[] => {
   return images;
 };
 
-// 获取轮播索引
-const getCarouselIndex = (product: any): number => {
-  return carouselIndexes.value.get(product.id) || 0;
-};
-
-// 轮播样式
-const carouselStripStyle = (product: any): Record<string, string> => {
-  const index = getCarouselIndex(product);
-  return {
-    transform: `translateX(-${index * 96}px)`,
-  };
-};
-
-// 开始轮播
-const startCarousel = (product: any) => {
-  emit('carouselStart', product);
-};
-
-// 停止轮播
-const stopCarousel = (product: any) => {
-  emit('carouselStop', product);
+const getPrimaryImage = (product: any): string => {
+  return getProductImages(product)[0] || '';
 };
 
 const hasQualityTag = (product: any): boolean => {
@@ -341,12 +301,6 @@ const handleAddToLibrary = (product: any) => {
   });
 };
 
-// 暴露方法给父组件
-defineExpose({
-  setCarouselIndex: (productId: string, index: number) => {
-    carouselIndexes.value.set(productId, index);
-  },
-});
 </script>
 
 <style scoped>
@@ -382,16 +336,11 @@ defineExpose({
   overflow: hidden;
 }
 
-.carousel-strip {
-  display: flex;
-  transition: transform 0.3s ease;
-}
-
-.carousel-slide-img {
+.similar-product-image {
   width: 96px;
   height: 96px;
   object-fit: cover;
-  flex-shrink: 0;
+  display: block;
 }
 
 .img-placeholder-small {
@@ -401,26 +350,6 @@ defineExpose({
   align-items: center;
   justify-content: center;
   background: #f1f5f9;
-}
-
-.img-dots {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 4px;
-}
-
-.img-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.img-dot.active {
-  background: #fff;
 }
 
 .product-name {

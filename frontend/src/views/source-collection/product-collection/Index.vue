@@ -124,8 +124,7 @@
       :isLoadingMore="isLoadingMore" :hasMore="hasMoreSimilar" :loadingDots="loadingDots" :elapsed="searchElapsed"
       :referenceCategoryName="currentReferenceCategoryName" :referenceCategoryId="currentReferenceCategoryId"
       :reference-type-id="currentReferenceTypeId"
-      @addToLibrary="addToProductLibrary" @carouselStart="startCarousel" @carouselStop="stopCarousel"
-      @load-more="loadNextSimilarPage" />
+      @addToLibrary="addToProductLibrary" @load-more="loadNextSimilarPage" />
     <AppDeleteConfirmDialog
       v-model="deleteConfirmVisible"
       message="确定要删除这件商品吗？"
@@ -406,105 +405,6 @@ async function loadNextSimilarPage() {
     hasMoreSimilar.value = false;
   } finally {
     isLoadingMore.value = false;
-  }
-}
-// ---- 走马灯状态管----
-interface CarouselEntry {
-  index: number;           // 当前显示第几张图
-  timer: ReturnType<typeof setInterval> | null;
-  loading: boolean;        // 是否正在拉取多图
-  fetched: boolean;        // 是否已拉取过多图
-}
-const carouselState = ref<Record<string, CarouselEntry>>({});
-/** 启动走马灯（商品已有多图时直接轮播，2500ms间隔*/
-function doStartCarousel(product: any) {
-  const imgs: string[] = product.images || [];
-  if (imgs.length <= 1) return;
-  const id = product.id;
-  // 停掉其他所有轮播，确保同时只有一个在播
-  stopAllCarousels(id);
-  if (!carouselState.value[id]) {
-    carouselState.value[id] = { index: 0, timer: null, loading: false, fetched: true };
-  }
-  const entry = carouselState.value[id];
-  if (entry.timer) return; // 已在运行
-  entry.timer = setInterval(() => {
-    const e = carouselState.value[id];
-    if (e) {
-      e.index = (e.index + 1) % Math.min(imgs.length, 5);
-      // 触发Vue响应式更新
-      carouselState.value = { ...carouselState.value };
-    }
-  }, 2500);
-}
-/** 停止所有轮播定时器，除exceptId（可选） */
-function stopAllCarousels(exceptId: string) {
-  for (const [id, entry] of Object.entries(carouselState.value)) {
-    if (id === exceptId) continue;
-    if (entry.timer) {
-      clearInterval(entry.timer);
-      entry.timer = null;
-    }
-    entry.index = 0;
-  }
-  // 触发响应式更新
-  carouselState.value = { ...carouselState.value };
-}
-/** 鼠标进入 懒加载多图后启动走马*/
-async function startCarousel(product: any) {
-  const id = product.id;
-  // 先停掉其他所有正在轮播的商品，只保留当前这个
-  stopAllCarousels(id);
-  // 初始化状态
-  if (!carouselState.value[id]) {
-    carouselState.value[id] = { index: 0, timer: null, loading: false, fetched: false };
-  }
-  const entry = carouselState.value[id];
-  // 已有多图直接轮播
-  if (product.images && product.images.length > 1) {
-    doStartCarousel(product);
-    return;
-  }
-  // 已拉取过但只图，不再重试
-  if (entry.fetched) return;
-  // 没有productId，无法拉取
-  if (!product.id && !product.productId) { entry.fetched = true; return; }
-  // 正在拉取
-  if (entry.loading) return;
-  entry.loading = true;
-  try {
-    const result = await alibabaAPI.getProductDetail(product.id || product.productId);
-    if (result.success && result.data) {
-      const imgs: string[] = result.data.images || [];
-      // 过滤mock占位图（bytedance）
-      const realImgs = imgs.filter((u: string) => !u.includes('bytedance') && !u.includes('neeko-copilot'));
-      if (realImgs.length > 1) {
-        // 把多图写入product对象（响应式）
-        product.images = realImgs;
-      }
-    }
-  } catch (e) {
-    // 忽略详情拉取失败，不影响展示
-  } finally {
-    entry.loading = false;
-    entry.fetched = true;
-    // 拉取完成后重新判断（此时鼠标可能已离开，但 doStartCarousel 内部会检timer 是否已存在）
-    if (product.images && product.images.length > 1) {
-      doStartCarousel(product);
-    }
-  }
-}
-/** 鼠标离开 停止轮播，重置到第一*/
-function stopCarousel(product: any) {
-  const id = product.id;
-  const entry = carouselState.value[id];
-  if (entry) {
-    if (entry.timer) {
-      clearInterval(entry.timer);
-      entry.timer = null;
-    }
-    entry.index = 0;
-    carouselState.value = { ...carouselState.value };
   }
 }
 // 启动搜索计时器和动画
@@ -829,31 +729,6 @@ const searchSimilarProducts = async (keyword: string) => {
   }
 };
 
-const applyKeywordFallbackForImageSearch = async (): Promise<boolean> => {
-  const fallbackKeyword = currentSearchKeyword.value.trim();
-  if (!fallbackKeyword) return false;
-
-  similarSearchMode.value = 'keyword';
-  similarImageUrl.value = '';
-  similarUsedKeyword.value = fallbackKeyword;
-
-  try {
-    const result = await alibabaAPI.searchSimilar(fallbackKeyword, 1, 40);
-    if (result.success && result.data && result.data.items && result.data.items.length > 0) {
-      similarProducts.value = result.data.items;
-      if ((result.data as any).usedKeyword) similarUsedKeyword.value = (result.data as any).usedKeyword;
-      const total = result.data.total || result.data.items.length;
-      similarTotal.value = total;
-      hasMoreSimilar.value = similarProducts.value.length < total;
-      ElMessage.warning('图搜无结果，已按商品名称搜索');
-      return true;
-    }
-  } catch {
-  }
-
-  return false;
-};
-
 // 搜同款-图片搜索（用Ozon商品图片URL）
 const searchSameProductsByImage = async (imageUrl: string) => {
   const searchImageUrl = toImageSearchUrl(imageUrl);
@@ -880,18 +755,12 @@ const searchSameProductsByImage = async (imageUrl: string) => {
       similarTotal.value = total;
       hasMoreSimilar.value = similarProducts.value.length < total;
     } else {
-      const fallbackApplied = await applyKeywordFallbackForImageSearch();
-      if (!fallbackApplied) {
-        ElMessage.warning(result.message || '未找到同款商品');
-        similarProducts.value = [];
-      }
-    }
-  } catch (error: any) {
-    const fallbackApplied = await applyKeywordFallbackForImageSearch();
-    if (!fallbackApplied) {
-      ElMessage.error(error.message || '图片搜索失败');
+      ElMessage.warning(result.message || '未找到同款商品');
       similarProducts.value = [];
     }
+  } catch (error: any) {
+    ElMessage.error(error.message || '图片搜索失败');
+    similarProducts.value = [];
   } finally {
     stopSearchTimer();
     isSearchingSimilar.value = false;
@@ -977,11 +846,8 @@ const addToProductLibrary = async (product: any) => {
 onMounted(() => {
   loadSourceCollection();
 });
-// 组件卸载时清理所有走马灯定时器和滚动监听
+// 组件卸载时清理滚动监听
 onUnmounted(() => {
-  for (const entry of Object.values(carouselState.value)) {
-    if (entry.timer) clearInterval(entry.timer);
-  }
   if (scrollObserver) {
     scrollObserver.disconnect();
     scrollObserver = null;
@@ -1313,51 +1179,6 @@ watch(similarDrawerVisible, (visible) => {
 
 .similar-product-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* 走马灯图片容*/
-.similar-img-wrap {
-  position: relative;
-  cursor: pointer;
-}
-
-/* 横向滑动*/
-.carousel-strip {
-  display: flex;
-  height: 100%;
-}
-
-/* 每张滑动图片 */
-.carousel-slide-img {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-/* 多图指示*/
-.img-dots {
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  gap: 3px;
-  pointer-events: none;
-}
-
-.img-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
-  transition: background 0.2s, transform 0.2s;
-}
-
-.img-dot.active {
-  background: rgba(255, 255, 255, 0.95);
-  transform: scale(1.25);
 }
 
 .supplier-city {
