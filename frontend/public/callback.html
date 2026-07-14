@@ -115,6 +115,27 @@
       return 'http://localhost:3000';
     }
 
+    function decodeBase64Url(value) {
+      var normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+      while (normalized.length % 4) normalized += '=';
+      return atob(normalized);
+    }
+
+    function parseAuthState(value) {
+      var raw = String(value || '').trim();
+      if (!raw) return {};
+      try {
+        var parsed = JSON.parse(decodeBase64Url(raw));
+        return {
+          userId: parsed.userId,
+          backendUrl: parsed.backendUrl ? String(parsed.backendUrl).replace(/\/+$/, '') : ''
+        };
+      } catch(e) {
+        var legacyUserId = parseInt(raw.split(':')[0], 10);
+        return isNaN(legacyUserId) ? {} : { userId: legacyUserId };
+      }
+    }
+
     async function exchangeToken(code) {
       var content = document.getElementById('content');
       content.innerHTML =
@@ -122,10 +143,11 @@
         '<h2>正在换取 Token...</h2>' +
         '<p>请稍候，正在连接后端服务</p>';
 
-      var backendUrl = getBackendUrl();
       // 从URL读取state参数，传给后端用于识别用户（callback.html跨域无法携带JWT）
       var urlObj = new URL(window.location.href);
       var stateParam = urlObj.searchParams.get('state') || '';
+      var stateInfo = parseAuthState(stateParam);
+      var backendUrl = stateInfo.backendUrl || getBackendUrl();
       var tokenUrl = new URL('/api/alibaba/auth/token', backendUrl).toString() + '?code=' + encodeURIComponent(code);
       if (stateParam) {
         tokenUrl += '&state=' + encodeURIComponent(stateParam);

@@ -14,6 +14,46 @@ import {
   searchRecommendSameProducts
 } from '../services/alibabaService';
 
+type AlibabaAuthState = {
+  userId?: number;
+  ts?: number;
+  backendUrl?: string;
+};
+
+const normalizeBackendUrl = (value: string): string => {
+  return String(value || '').trim().replace(/\/+$/, '');
+};
+
+const getRequestBackendUrl = (req: Request): string => {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol || 'http';
+  const host = forwardedHost || req.get('host') || '';
+  return normalizeBackendUrl(`${proto}://${host}`);
+};
+
+const buildAlibabaAuthState = (payload: AlibabaAuthState): string => {
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+};
+
+const parseAlibabaAuthState = (value: unknown): AlibabaAuthState => {
+  const stateStr = String(value || '').trim();
+  if (!stateStr) return {};
+
+  try {
+    const parsed = JSON.parse(Buffer.from(stateStr, 'base64url').toString('utf8'));
+    return {
+      userId: Number(parsed.userId || 0) || undefined,
+      ts: Number(parsed.ts || 0) || undefined,
+      backendUrl: parsed.backendUrl ? normalizeBackendUrl(parsed.backendUrl) : undefined,
+    };
+  } catch {
+    const parts = stateStr.split(':');
+    const parsedId = parseInt(parts[0], 10);
+    return Number.isNaN(parsedId) ? {} : { userId: parsedId };
+  }
+};
+
 /**
  * 搜索1688货源
  */
@@ -247,14 +287,7 @@ export const exchangeTokenController = async (req: Request, res: Response) => {
     }
 
     if (!userId && state) {
-      const stateStr = state as string;
-      const parts = stateStr.split(':');
-      if (parts.length >= 1) {
-        const parsedId = parseInt(parts[0], 10);
-        if (!isNaN(parsedId)) {
-          userId = parsedId;
-        }
-      }
+      userId = parseAlibabaAuthState(state).userId;
     }
 
     if (!userId) {
@@ -323,7 +356,11 @@ export const getAuthorizeInfoController = async (req: Request, res: Response) =>
     const appSecret = (config.appSecret || config.app_secret || '').trim();
     const redirectUri = (config.redirectUri || config.redirect_uri || '').trim();
 
-    const state = `${userId}:${Date.now()}`;
+    const state = buildAlibabaAuthState({
+      userId,
+      ts: Date.now(),
+      backendUrl: getRequestBackendUrl(req),
+    });
 
     const standardUrl = `https://auth.1688.com/oauth/authorize?response_type=code&client_id=${appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
