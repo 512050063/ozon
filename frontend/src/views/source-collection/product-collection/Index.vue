@@ -798,15 +798,19 @@ const addToProductLibrary = async (product: any) => {
   try {
     const productName = product.subject || product.name || '';
     const productPrice = typeof product.price === 'number' ? product.price : (parseFloat(product.price) || 0);
-    const detailImages = await loadProductDetailImages(product);
-    const allProductImages = mergeProductImages(
+    const existingProductImages = mergeProductImages(
       product.images,
-      detailImages,
+      product.imageList,
       product.image,
       product.image_url,
       product.imageUrl,
+    );
+    const detailImages = existingProductImages.length > 1 ? [] : await loadProductDetailImages(product);
+    const allProductImages = mergeProductImages(
+      existingProductImages,
+      detailImages,
     ).slice(0, 8);
-    const productImageUrl = product.image || product.image_url || product.imageUrl || allProductImages[0] || '';
+    const productImageUrl = allProductImages[0] || product.image || product.image_url || product.imageUrl || '';
     
     // 构建1688货源数据
     const sourceData = {

@@ -37,7 +37,7 @@
                       <img
                         v-for="(imageUrl, imageIndex) in getSourceImages(source)"
                         :key="`${source.id}-${imageIndex}`"
-                        :src="imageUrl"
+                        :src="toDisplayImageUrl(imageUrl)"
                         class="supply-source-image"
                         :alt="source.subject"
                       />
@@ -128,7 +128,7 @@
           <AppSkeletonLoader v-if="urlPreviewLoading" variant="card" :rows="2" compact />
           <template v-else>
             <button v-if="previewSource" type="button" class="source-preview-card" @click="openSourceDetailUrl(previewSource)">
-              <img v-if="previewSource.image" :src="previewSource.image" class="source-preview-image" :alt="previewSource.subject" />
+              <img v-if="previewSource.image" :src="toDisplayImageUrl(previewSource.image)" class="source-preview-image" :alt="previewSource.subject" />
               <div v-else class="source-preview-placeholder">1688</div>
               <div class="source-preview-main">
                 <div class="source-preview-title" :title="previewSource.subject">
@@ -191,6 +191,7 @@ import {
   type SupplySourcePayload,
 } from '@/api/supplySourceAPI';
 import { getCategoryLeaf } from '@/utils/categoryText';
+import { toDisplayImageUrl } from '@/utils/imageUrl';
 
 const keyword = ref('');
 const sources = ref<SupplySource[]>([]);
