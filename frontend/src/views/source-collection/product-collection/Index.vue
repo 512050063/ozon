@@ -389,7 +389,7 @@ async function loadNextSimilarPage() {
   const nextPage = currentSimilarPage.value + 1;
   try {
     const result = similarSearchMode.value === 'image'
-      ? await alibabaAPI.searchByImage(unwrapDisplayImageUrl(similarImageUrl.value), undefined, nextPage, 40)
+      ? await alibabaAPI.searchByImage(toImageSearchUrl(similarImageUrl.value), undefined, nextPage, 40)
       : await alibabaAPI.searchSimilar(similarUsedKeyword.value, nextPage, 40);
     if (result.success && result.data && result.data.items && result.data.items.length > 0) {
       similarProducts.value = similarProducts.value.concat(result.data.items);
@@ -604,11 +604,31 @@ const unwrapDisplayImageUrl = (value: unknown): string => {
   return raw;
 };
 
+const isLocalManagedImagePath = (value: string): boolean => {
+  return /^\/(?:uploads\/images|images|assets\/images\/product-images)\//.test(value);
+};
+
+const getImageSearchOrigin = (): string => {
+  const env = import.meta.env as any;
+  const apiBaseUrl = env.VITE_API_BASE_URL || (env.DEV ? 'http://localhost:3000/api' : '/api');
+  try {
+    return new URL(apiBaseUrl, window.location.origin).origin;
+  } catch {
+    return window.location.origin;
+  }
+};
+
 const toImageSearchUrl = (value: unknown): string => {
   const unwrapped = unwrapDisplayImageUrl(value);
   if (!unwrapped) return '';
+  if (isLocalManagedImagePath(unwrapped)) {
+    return `${getImageSearchOrigin()}${unwrapped}`;
+  }
   try {
     const parsed = new URL(unwrapped, window.location.origin);
+    if (isLocalManagedImagePath(parsed.pathname) && parsed.origin === window.location.origin) {
+      return `${getImageSearchOrigin()}${parsed.pathname}${parsed.search}`;
+    }
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.href;
     }

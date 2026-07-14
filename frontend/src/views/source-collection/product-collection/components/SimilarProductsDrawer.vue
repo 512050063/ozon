@@ -35,13 +35,31 @@
         <div v-for="product in products" :key="product.id" class="similar-product-card">
           <div class="flex items-start gap-4">
             <!-- 商品主图 -->
-            <div class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap">
-              <img
-                v-if="getPrimaryImage(product)"
-                :src="toDisplayImageUrl(getPrimaryImage(product))"
-                :alt="product.subject || product.name"
-                class="similar-product-image"
-              />
+            <div
+              class="flex-shrink-0 w-24 h-24 bg-slate-100 rounded-lg overflow-hidden relative similar-img-wrap"
+              @mouseenter="startCarousel(product)"
+              @mouseleave="stopCarousel(product)"
+            >
+              <div
+                v-if="getCarouselImages(product).length > 0"
+                class="similar-carousel-strip"
+                :style="getCarouselStripStyle(product)"
+              >
+                <img
+                  v-for="(imgUrl, idx) in getCarouselImages(product)"
+                  :key="`${getProductKey(product)}-${idx}-${imgUrl}`"
+                  :src="toDisplayImageUrl(imgUrl)"
+                  :alt="product.subject || product.name"
+                  class="similar-carousel-slide-img"
+                />
+              </div>
+              <div v-if="getCarouselImages(product).length > 1" class="similar-carousel-dots">
+                <span
+                  v-for="(_, idx) in getCarouselImages(product)"
+                  :key="`${getProductKey(product)}-dot-${idx}`"
+                  :class="{ active: getCarouselIndex(product) === idx }"
+                ></span>
+              </div>
               <!-- 占位图 -->
               <div v-else class="img-placeholder-small">
                 <el-icon size="24" color="#c0c4cc"><Picture /></el-icon>
@@ -201,6 +219,8 @@ const drawerVisible = computed({
 // 无限滚动哨兵 ref
 const sentinelRef = ref<HTMLElement | null>(null);
 let loadMoreObserver: IntersectionObserver | null = null;
+const carouselIndexes = ref<Record<string, number>>({});
+const carouselTimers = new Map<string, ReturnType<typeof setInterval>>();
 
 // 设置 IntersectionObserver
 const setupObserver = () => {
@@ -233,6 +253,7 @@ watch(drawerVisible, (visible) => {
     setupObserver();
   } else {
     cleanupObserver();
+    clearAllCarouselTimers();
   }
 });
 
@@ -245,9 +266,14 @@ watch(() => props.products.length, () => {
 
 onUnmounted(() => {
   cleanupObserver();
+  clearAllCarouselTimers();
 });
 
-// 获取商品图片，静态展示第一张真实图片
+const getProductKey = (product: any): string => {
+  return String(product.id || product.productId || product.offerId || product.detail_url || product.detailUrl || product.name || '');
+};
+
+// 获取商品图片，默认最多展示5张，悬停时轮播
 const getProductImages = (product: any): string[] => {
   const images: string[] = [];
   const push = (value: unknown) => {
@@ -275,8 +301,64 @@ const getProductImages = (product: any): string[] => {
   return images;
 };
 
-const getPrimaryImage = (product: any): string => {
-  return getProductImages(product)[0] || '';
+const getCarouselImages = (product: any): string[] => {
+  return getProductImages(product).slice(0, 5);
+};
+
+const getCarouselIndex = (product: any): number => {
+  const key = getProductKey(product);
+  const images = getCarouselImages(product);
+  const index = carouselIndexes.value[key] || 0;
+  return images.length > 0 ? index % images.length : 0;
+};
+
+const setCarouselIndex = (product: any, index: number) => {
+  const key = getProductKey(product);
+  const images = getCarouselImages(product);
+  if (!key || images.length <= 1) return;
+  carouselIndexes.value = {
+    ...carouselIndexes.value,
+    [key]: index % images.length,
+  };
+};
+
+const getCarouselStripStyle = (product: any) => {
+  return {
+    width: `${Math.max(getCarouselImages(product).length, 1) * 100}%`,
+    transform: `translateX(-${getCarouselIndex(product) * 96}px)`,
+  };
+};
+
+const startCarousel = (product: any) => {
+  const key = getProductKey(product);
+  const images = getCarouselImages(product);
+  if (!key || images.length <= 1) return;
+  stopCarousel(product, false);
+  setCarouselIndex(product, getCarouselIndex(product) + 1);
+  carouselTimers.set(key, setInterval(() => {
+    setCarouselIndex(product, getCarouselIndex(product) + 1);
+  }, 1200));
+};
+
+const stopCarousel = (product: any, reset = true) => {
+  const key = getProductKey(product);
+  const timer = carouselTimers.get(key);
+  if (timer) {
+    clearInterval(timer);
+    carouselTimers.delete(key);
+  }
+  if (reset && key) {
+    carouselIndexes.value = {
+      ...carouselIndexes.value,
+      [key]: 0,
+    };
+  }
+};
+
+const clearAllCarouselTimers = () => {
+  carouselTimers.forEach(timer => clearInterval(timer));
+  carouselTimers.clear();
+  carouselIndexes.value = {};
 };
 
 const hasQualityTag = (product: any): boolean => {
@@ -336,11 +418,44 @@ const handleAddToLibrary = (product: any) => {
   overflow: hidden;
 }
 
-.similar-product-image {
+.similar-carousel-strip {
+  display: flex;
+  height: 96px;
+  transition: transform 0.34s ease;
+}
+
+.similar-carousel-slide-img {
   width: 96px;
   height: 96px;
+  flex: 0 0 96px;
   object-fit: cover;
   display: block;
+}
+
+.similar-carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  display: flex;
+  gap: 4px;
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.28);
+  transform: translateX(-50%);
+}
+
+.similar-carousel-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.58);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.similar-carousel-dots span.active {
+  width: 12px;
+  border-radius: 999px;
+  background: #fff;
 }
 
 .img-placeholder-small {
