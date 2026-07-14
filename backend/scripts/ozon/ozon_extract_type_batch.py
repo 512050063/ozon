@@ -9,6 +9,7 @@ Ozon 商品类型批量提取脚本 (CDP 模式)
 """
 import json
 import os
+import re
 import sys
 from urllib.parse import urlsplit, urlunsplit
 
@@ -90,6 +91,22 @@ def infer_type_from_title(title):
     return ''
 
 
+def extract_type_from_characteristics_text(text):
+    lines = [line.strip() for line in (text or '').splitlines() if line.strip()]
+    label_pattern = r'^(?:类型|商品类型|Тип товара|Тип|Вид)$'
+    inline_pattern = r'^(?:类型|商品类型|Тип товара|Тип|Вид)\s*[:：]?\s+(.+)$'
+
+    for idx, line in enumerate(lines):
+        inline = re.match(inline_pattern, line, re.I)
+        if inline and inline.group(1).strip():
+            return inline.group(1).strip()
+        if re.match(label_pattern, line, re.I):
+            for next_line in lines[idx + 1: idx + 4]:
+                if not re.match(label_pattern, next_line, re.I):
+                    return next_line.strip()
+    return ''
+
+
 def is_transient_error_title(title):
     value = title or ''
     return any(pattern.lower() in value.lower() for pattern in TRANSIENT_ERROR_TITLES)
@@ -165,7 +182,7 @@ def extract_type(page, product_url, fallback_title=''):
                 var key = dts[i].textContent.trim();
                 var dd = dds[i];
                 var val = dd ? dd.textContent.trim() : '';
-                if (key === 'Тип' || key === 'тип' || key === 'Тип товара' || key === 'Вид' || key === '类型') {
+                if (key === 'Тип' || key === 'тип' || key === 'Тип товара' || key === 'Вид' || key === '类型' || key === '商品类型') {
                     typeValue = val;
                     break;
                 }
@@ -185,13 +202,14 @@ def extract_type(page, product_url, fallback_title=''):
             } catch(e) {}
         }
 
-        return { title: title || docTitle, type: typeValue, breadcrumb: breadcrumb, docTitle: docTitle };
+        var sectionText = section ? section.innerText : '';
+        return { title: title || docTitle, type: typeValue, breadcrumb: breadcrumb, docTitle: docTitle, sectionText: sectionText };
     }
     """)
 
     page_title = data.get('title', '')
     title = fallback_title if fallback_title and (not page_title or is_transient_error_title(page_title)) else page_title
-    type_val = data.get('type', '')
+    type_val = data.get('type', '') or extract_type_from_characteristics_text(data.get('sectionText', ''))
     breadcrumb = data.get('breadcrumb', '')
     
     # 如果 type 为空，尝试从面包屑最后一级提取

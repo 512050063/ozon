@@ -97,7 +97,7 @@ export const normalizeOzonProducts = (items: any[] = []): OzonProduct[] => items
     imageUrl: item.mainImage || item.thumbnail || item.imageUrl || '',
     productUrl: link,
     stock: parseInt(stockStr) || 0,
-    productType: item.productType || '',
+    productType: item.productType || item.product_type || item.inferred_type || item.inferredType || '',
     descriptionCategoryId: item.descriptionCategoryId ?? null,
     typeId: item.typeId ?? null,
   };

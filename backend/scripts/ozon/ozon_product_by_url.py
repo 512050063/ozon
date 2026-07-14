@@ -397,6 +397,8 @@ def extract_product(page, fallback_url: str) -> dict:
             }
             originalPriceCandidates.sort((a, b) => (a.priority - b.priority) || (b.value - a.value));
 
+            const combinedText = clean(textNodes.join(' '));
+
             let rating = '';
             for (const text of textNodes) {
                 if (/^[1-5][,.]\\d$/.test(text)) {
@@ -404,9 +406,20 @@ def extract_product(page, fallback_url: str) -> dict:
                     break;
                 }
             }
+            if (!rating) {
+                const ratingMatch = combinedText.match(/(?:^|[^\\d])([1-5][,.]\\d)(?=\\s*(?:\\d|评价|评论|отзыв|отзыва|отзывов|reviews?|\\b))/i);
+                if (ratingMatch) rating = ratingMatch[1].replace(',', '.');
+            }
 
             let reviewCount = '';
+            const reviewSource = combinedText.replace(/\\b[1-5][,.]\\d\\b/g, ' ');
+            const reviewMatches = Array.from(reviewSource.matchAll(/([\\d\\s\\u00a0\\u202f,.]+)\\s*(?:评价|评论|отзыв|отзыва|отзывов|reviews?)/gi));
+            if (reviewMatches.length) {
+                const nearest = reviewMatches[reviewMatches.length - 1][1];
+                reviewCount = nearest.replace(/[^\\d]/g, '');
+            }
             for (const text of textNodes) {
+                if (reviewCount) break;
                 const match = text.match(/^([\\d\\s,.]+)\\s*(评价|评论|отзыв|отзыва|отзывов|reviews?)/i);
                 if (match) {
                     reviewCount = match[1].replace(/[\\s,.]/g, '');
@@ -559,6 +572,7 @@ def fetch_product(product_url: str, cookie_data: dict, headless_mode: bool = Tru
             product['link'] = normalize_product_url(product.get('link', ''), product_url)
             product['main_image'] = normalize_image(product.get('main_image', ''))
             product['thumbnail'] = normalize_image(product.get('thumbnail', ''))
+            product['inferred_type'] = infer_type_from_text(f"{product.get('title', '')} {product.get('link', '')} {product_url}")
 
             if is_error_page_snapshot(product):
                 last_error = 'Ozon返回错误页，请稍后重试或重新获取Cookie'

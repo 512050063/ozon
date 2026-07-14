@@ -32,6 +32,7 @@ let batchRunning = false;  // 标记批量脚本是否正在运行
 let batchStartTime = 0;  // 批量任务开始时间
 let lastTypeCacheSearchSyncAt = 0;
 let activeWorkerBatchTask: { userId: number; taskId: number } | null = null;
+let activeBatchUrls: string[] = [];
 
 // 持久化缓存文件路径
 const SCRIPT_DATA_DIR = path.join(__dirname, '../../scripts/data');
@@ -139,6 +140,7 @@ export const forceResetBatchStatus = (): void => {
   batchRunning = false;
   batchStartTime = 0;
   activeWorkerBatchTask = null;
+  activeBatchUrls = [];
 };
 
 /**
@@ -210,8 +212,10 @@ const applyWorkerTypeTaskResult = (result: any): number => {
 };
 
 const markPendingTypesAsError = (message: string) => {
-  for (const [url, info] of typeCache.entries()) {
-    if (info.status !== 'pending') continue;
+  const targetUrls = activeBatchUrls.length > 0 ? activeBatchUrls : Array.from(typeCache.keys());
+  for (const url of targetUrls) {
+    const info = typeCache.get(url);
+    if (!info || info.status !== 'pending') continue;
     typeCache.set(url, {
       type: '',
       source: '',
@@ -222,7 +226,8 @@ const markPendingTypesAsError = (message: string) => {
 };
 
 export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<string, string> = {}, userId?: number): Promise<{ total: number; started: boolean }> => {
-  if (!urls || urls.length === 0) {
+  const normalizedUrls = Array.from(new Set((urls || []).map(url => String(url || '').trim()).filter(Boolean)));
+  if (normalizedUrls.length === 0) {
     return { total: 0, started: false };
   }
 
@@ -233,24 +238,25 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
       logger.warn(`检测到卡住的批量任务（已运行 ${runningTime / 1000}秒），自动重置状态`);
       batchRunning = false;
       batchStartTime = 0;
+      activeBatchUrls = [];
     }
   }
 
   if (batchRunning) {
     logger.warn('已有批量提取任务正在运行，跳过新的请求');
-    return { total: urls.length, started: false };
+    return { total: normalizedUrls.length, started: false };
   }
 
-  clearTypeCache();
   batchRunning = true;
   batchStartTime = Date.now();  // 记录开始时间
   activeWorkerBatchTask = null;
-  const total = urls.length;
+  activeBatchUrls = normalizedUrls;
+  const total = normalizedUrls.length;
   
   logger.info(`开始批量提取类型，共 ${total} 个商品（批量模式）`);
 
   // 标记所有为 pending
-  for (const url of urls) {
+  for (const url of normalizedUrls) {
     typeCache.set(url, { type: '', source: '', status: 'pending' });
   }
 
@@ -271,13 +277,13 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
 
     const task = await createBrowserTask(userId, {
       type: 'type_extract_batch',
-      payload: { urls, titles: fallbackTitles },
+      payload: { urls: normalizedUrls, titles: fallbackTitles },
       priority: 6,
       ttlMs: 20 * 60 * 1000,
     });
     activeWorkerBatchTask = { userId, taskId: task.id };
     saveTypeCacheToFile();
-    logger.info(`已创建本机采集器类型提取任务: ${task.id}, URL数量: ${urls.length}`);
+    logger.info(`已创建本机采集器类型提取任务: ${task.id}, URL数量: ${normalizedUrls.length}`);
     return { total, started: true };
   }
 
@@ -291,9 +297,9 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
       const pythonPath = process.env.PYTHON_PATH || 'python';
       
       // 将 URL 列表作为 JSON 通过 stdin 传入
-      const urlsJson = JSON.stringify({ urls, titles: fallbackTitles });
+      const urlsJson = JSON.stringify({ urls: normalizedUrls, titles: fallbackTitles });
       
-      logger.info(`执行批量脚本: ${scriptPath}, URL数量: ${urls.length}`);
+      logger.info(`执行批量脚本: ${scriptPath}, URL数量: ${normalizedUrls.length}`);
       
       const child = exec(`"${pythonPath}" "${scriptPath}"`, {
         timeout: 600000,  // 10分钟超时
@@ -335,7 +341,10 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
         batchRunning = false;
         batchStartTime = 0;
         logger.info(`[批量] 脚本完成，退出码: ${code}，耗时: ${elapsed.toFixed(1)}秒`);
-        // 完成后写入持久化文件
+        if (code !== 0) {
+          markPendingTypesAsError(stderr || '类型提取脚本异常退出');
+        }
+        activeBatchUrls = [];
         saveTypeCacheToFile();
         if (code !== 0) {
           logger.error(`[批量] 脚本异常退出: ${stderr || '未知错误'}`);
@@ -345,12 +354,17 @@ export const batchExtractTypes = async (urls: string[], fallbackTitles: Record<s
       child.on('error', (error) => {
         batchRunning = false;
         batchStartTime = 0;
+        markPendingTypesAsError(error.message || '类型提取脚本启动失败');
+        activeBatchUrls = [];
         logger.error(`[批量] 启动失败: ${error.message}`);
         saveTypeCacheToFile();
       });
 
     } catch (error: any) {
       batchRunning = false;
+      batchStartTime = 0;
+      markPendingTypesAsError(error.message || '类型提取异常');
+      activeBatchUrls = [];
       logger.error(`[批量] 异常: ${error.message}`);
       saveTypeCacheToFile();
     }
@@ -374,22 +388,29 @@ export const getBatchExtractStatus = async () => {
       batchStartTime = 0;
       activeWorkerBatchTask = null;
       markPendingTypesAsError(task?.errorMessage || '本机采集器类型任务失败');
+      activeBatchUrls = [];
       saveTypeCacheToFile();
     } else if (task.status === 'success') {
       batchRunning = false;
       batchStartTime = 0;
       activeWorkerBatchTask = null;
+      activeBatchUrls = [];
       saveTypeCacheToFile();
     }
   }
 
   syncSearchCachesFromTypeCache();
-  const total = typeCache.size;
+  const statusUrls = batchRunning && activeBatchUrls.length > 0
+    ? activeBatchUrls
+    : Array.from(typeCache.keys());
+  const total = statusUrls.length;
   let done = 0;
   let error = 0;
   const results: Array<{url: string, type: string, title?: string, status: string}> = [];
 
-  for (const [url, info] of typeCache.entries()) {
+  for (const url of statusUrls) {
+    const info = typeCache.get(url);
+    if (!info) continue;
     if (info.status === 'done') done++;
     else if (info.status === 'error') error++;
     results.push({

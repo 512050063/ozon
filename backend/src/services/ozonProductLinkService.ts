@@ -21,6 +21,10 @@ export type OzonProductLinkRawItem = {
   review_count?: string;
   reviewCount?: string;
   stock?: string;
+  product_type?: string;
+  productType?: string;
+  inferred_type?: string;
+  inferredType?: string;
 };
 
 export type OzonProductLinkProduct = {
@@ -152,7 +156,7 @@ export const mapOzonProductLinkRawItem = (item: OzonProductLinkRawItem): OzonPro
     imageUrl: item.main_image || item.mainImage || item.thumbnail || "",
     productUrl,
     stock: parseInteger(item.stock),
-    productType: "",
+    productType: item.productType || item.product_type || item.inferred_type || item.inferredType || "",
     descriptionCategoryId: null,
     typeId: null,
   };
@@ -294,8 +298,11 @@ export const resolveOzonProductLink = async (
     throw new Error("链接解析失败：商品信息不完整");
   }
 
-  const typeInfo = await dependencies.extractType(product.productUrl || normalizedUrl);
-  product.productType = typeInfo.type || "";
+  if (!product.productType) {
+    dependencies.extractType(product.productUrl || normalizedUrl).catch(error => {
+      logger.warn(`Ozon链接解析后的类型后台提取失败: ${error?.message || error}`);
+    });
+  }
 
   return {
     success: true,
