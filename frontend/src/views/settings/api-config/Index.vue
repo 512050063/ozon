@@ -324,19 +324,34 @@
                     <div class="ozon-assistant-section">
                       <div class="section-header-line">
                         <div class="section-kicker">环境检测</div>
-                        <button
-                          class="assistant-mini-btn"
-                          :disabled="isCheckingLocalAssistant"
-                          @click="checkLocalAssistant"
-                        >
-                          {{ isCheckingLocalAssistant ? '检测中' : '检测环境' }}
-                        </button>
+                        <div class="assistant-mini-actions">
+                          <button
+                            class="assistant-mini-btn"
+                            :disabled="!localAssistantOnline || isSelectingProjectRoot"
+                            @click="selectProjectRoot"
+                          >
+                            {{ isSelectingProjectRoot ? '选择中' : '选择路径' }}
+                          </button>
+                          <button
+                            class="assistant-mini-btn"
+                            :disabled="isCheckingLocalAssistant || isInstallingPlaywright"
+                            @click="checkLocalAssistant(true, true)"
+                          >
+                            {{ isInstallingPlaywright ? '安装中' : isCheckingLocalAssistant ? '检测中' : '检测环境' }}
+                          </button>
+                        </div>
                       </div>
+                      <p class="section-desc assistant-requirement">
+                        必需：Python 3.10+（推荐 3.11/3.12）和 Google Chrome 稳定版。
+                        <a href="https://www.python.org/downloads/" target="_blank" rel="noreferrer" title="打开 Python 官方下载页">Python下载</a>
+                        <span> · </span>
+                        <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" title="打开 Google Chrome 官方下载页">Chrome下载</a>
+                      </p>
                       <div class="env-check-list" v-if="localAssistantEnv">
                         <div v-for="item in assistantEnvItems" :key="item.key" class="env-check-row">
                           <span class="assistant-dot" :class="item.ok ? 'is-online' : 'is-offline'"></span>
                           <span class="font-medium text-slate-700">{{ item.label }}</span>
-                          <span class="text-slate-400 truncate">{{ item.displayValue }}</span>
+                          <span class="text-slate-400 truncate" :title="item.displayValue">{{ item.displayValue }}</span>
                         </div>
                       </div>
                       <p v-else class="section-desc">检测 Python、Chrome、项目路径和 worker 配置状态。</p>
@@ -363,7 +378,7 @@
                         </div>
                       </div>
                       <p class="section-desc">
-                        更新令牌会复用当前采集器记录，助手在线时自动写入配置、启动 worker 并刷新状态。
+                        更新令牌会复用当前采集器记录，自动写入所选项目路径下的 worker 配置并启动采集器。
                       </p>
                     </div>
                   </div>
@@ -603,6 +618,8 @@ const isLoadingWorkers = ref(false);
 const isCreatingWorker = ref(false);
 const isCheckingLocalAssistant = ref(false);
 const isStartingLocalWorker = ref(false);
+const isSelectingProjectRoot = ref(false);
+const isInstallingPlaywright = ref(false);
 const localAssistantOnline = ref(false);
 const localAssistantEnv = ref<LocalAssistantEnv | null>(null);
 const localWorkerStatus = ref<LocalAssistantWorkerStatus | null>(null);
@@ -633,7 +650,9 @@ const cacheInfo = reactive({
 
 const assistantEnvLabels: Record<string, string> = {
   python: 'Python',
+  pythonVersion: 'Python版本',
   chrome: 'Chrome',
+  playwright: 'Playwright',
   repoRoot: '项目路径',
   workerConfig: '采集器配置',
 };
@@ -643,7 +662,9 @@ const assistantEnvItems = computed(() => {
   return Object.entries(localAssistantEnv.value).map(([key, item]) => ({
     key,
     label: assistantEnvLabels[key] || key,
-    displayValue: item.ok ? (item.value || '已就绪') : item.hint,
+    displayValue: key === 'playwright' && isInstallingPlaywright.value
+      ? '正在自动安装 Playwright...'
+      : item.ok ? (item.value || '已就绪') : item.hint,
     ...item,
   }));
 });
@@ -810,11 +831,12 @@ const loadConfigs = async (showError = true): Promise<boolean> => {
 };
 
 const buildWorkerConfig = (token: string): LocalWorkerConfig => {
+  const pythonPath = localAssistantEnv.value?.python?.value || 'py';
   return {
     apiBaseUrl: window.location.origin,
     workerToken: token,
     repoRoot: localAssistantEnv.value?.repoRoot?.value || '',
-    pythonPath: 'py',
+    pythonPath,
     pollIntervalSeconds: 5,
     scriptTimeoutSeconds: 600,
   };
@@ -826,7 +848,32 @@ const buildWorkerConfigSnippet = (config: LocalWorkerConfig) => {
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const checkLocalAssistant = async (showToast = true) => {
+const installPlaywrightIfNeeded = async () => {
+  const playwright = localAssistantEnv.value?.playwright;
+  if (!localAssistantOnline.value || !playwright || playwright.ok || isInstallingPlaywright.value) {
+    return true;
+  }
+  isInstallingPlaywright.value = true;
+  try {
+    ElMessage.info('正在自动安装 Playwright，请稍候');
+    await ozonLocalAssistantAPI.installPlaywright();
+    const env = await ozonLocalAssistantAPI.checkEnv();
+    localAssistantEnv.value = env;
+    if (!env.playwright?.ok) {
+      ElMessage.warning(env.playwright?.hint || 'Playwright安装后仍未检测到，请重新启动本机助手');
+      return false;
+    }
+    ElMessage.success('Playwright已安装');
+    return true;
+  } catch (error: any) {
+    ElMessage.warning(error.message || 'Playwright自动安装失败，请检查本机网络后重试');
+    return false;
+  } finally {
+    isInstallingPlaywright.value = false;
+  }
+};
+
+const checkLocalAssistant = async (showToast = true, autoInstallPlaywright = false) => {
   isCheckingLocalAssistant.value = true;
   try {
     await ozonLocalAssistantAPI.getHealth();
@@ -837,6 +884,9 @@ const checkLocalAssistant = async (showToast = true) => {
     localAssistantOnline.value = true;
     localAssistantEnv.value = env;
     localWorkerStatus.value = workerStatus;
+    if (autoInstallPlaywright && !env.playwright?.ok) {
+      await installPlaywrightIfNeeded();
+    }
     if (showToast) {
       ElMessage.success('本机助手已连接');
     }
@@ -871,6 +921,31 @@ const startLocalWorker = async (config: LocalWorkerConfig, showToast = true) => 
   } finally {
     isStartingLocalWorker.value = false;
   }
+};
+
+const selectProjectRoot = async () => {
+  if (!localAssistantOnline.value) {
+    ElMessage.warning('请先启动本机助手，再选择项目路径');
+    return;
+  }
+  isSelectingProjectRoot.value = true;
+  try {
+    const result = await ozonLocalAssistantAPI.selectProjectRoot();
+    ElMessage.success(`项目路径已保存：${result.repoRoot}`);
+    await checkLocalAssistant(false);
+  } catch (error: any) {
+    ElMessage.warning(error.message || '项目路径选择失败');
+  } finally {
+    isSelectingProjectRoot.value = false;
+  }
+};
+
+const getBlockingEnvItems = () => {
+  if (!localAssistantEnv.value) return [];
+  return Object.entries(localAssistantEnv.value).filter(([key, item]) => {
+    if (key === 'workerConfig') return false;
+    return !item.ok;
+  });
 };
 
 const getManualAssistantCommand = () => {
@@ -912,6 +987,23 @@ const refreshWorkersUntilOnline = async (maxAttempts = 6) => {
 const createOzonWorker = async () => {
   isCreatingWorker.value = true;
   try {
+    const assistantReady = localAssistantOnline.value || await checkLocalAssistant(false);
+    if (!assistantReady) {
+      ElMessage.warning('未检测到本机助手：请先安装 Python、下载项目文件，并运行本机助手命令');
+      return;
+    }
+    if (localAssistantEnv.value?.playwright && !localAssistantEnv.value.playwright.ok) {
+      const installed = await installPlaywrightIfNeeded();
+      if (!installed) {
+        return;
+      }
+    }
+    const blockingItems = getBlockingEnvItems();
+    if (blockingItems.length > 0) {
+      const labels = blockingItems.map(([key]) => assistantEnvLabels[key] || key).join('、');
+      ElMessage.warning(`本机环境未就绪：${labels}`);
+      return;
+    }
     const response = await ozonWorkerAPI.refreshDefaultWorker('本机采集器');
     if (!response.success || !response.data?.token) {
       ElMessage.error(response.message || '采集器令牌更新失败');
@@ -919,9 +1011,7 @@ const createOzonWorker = async () => {
     }
     const config = buildWorkerConfig(response.data.token);
     workerConfigSnippet.value = buildWorkerConfigSnippet(config);
-    const started = localAssistantOnline.value
-      ? await startLocalWorker(config, false)
-      : await checkLocalAssistant(false).then(online => online ? startLocalWorker(config, false) : false);
+    const started = await startLocalWorker(config, false);
     if (!started) {
       await tryCopyWorkerConfigSilently();
       showWorkerTokenDialog.value = true;
@@ -1536,6 +1626,21 @@ onUnmounted(() => {});
   font-size: 12px;
   line-height: 20px;
   margin: 8px 0 0;
+}
+
+.assistant-requirement {
+  margin-top: 4px;
+}
+
+.assistant-requirement a {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.assistant-requirement a:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .assistant-status-line {

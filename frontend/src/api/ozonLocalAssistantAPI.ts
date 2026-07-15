@@ -28,6 +28,15 @@ export type LocalAssistantStartResponse = {
   configPath: string;
 };
 
+export type LocalAssistantProjectSelection = {
+  repoRoot: string;
+  configPath: string;
+};
+
+export type LocalAssistantInstallResponse = {
+  installed: boolean;
+};
+
 export type LocalWorkerConfig = {
   apiBaseUrl: string;
   workerToken: string;
@@ -63,6 +72,16 @@ export const ozonLocalAssistantAPI = {
   getHealth: () => requestAssistant<LocalAssistantHealth>('/health'),
 
   checkEnv: () => requestAssistant<LocalAssistantEnv>('/env/check', {}, 3000),
+
+  selectProjectRoot: () => requestAssistant<LocalAssistantProjectSelection>('/project/select', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }, 120000),
+
+  installPlaywright: () => requestAssistant<LocalAssistantInstallResponse>('/env/install-playwright', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }, 300000),
 
   getWorkerStatus: () => requestAssistant<LocalAssistantWorkerStatus>('/worker/status'),
 
