@@ -151,62 +151,8 @@
                     </el-radio-button>
                   </el-radio-group>
 
-                  <div class="supply-provider-note">
-                    <div v-for="option in supplyProviderOptions" :key="option.value" class="supply-provider-note-row">
-                      <span class="supply-provider-dot" :class="`is-${option.value}`"></span>
-                      <span class="font-semibold text-slate-700">{{ option.label }}</span>
-                      <span class="text-slate-500">{{ option.note }}</span>
-                    </div>
-                  </div>
-
-                  <div class="api-config-actions">
-                    <template v-if="editingPlatform === 'supply-provider'">
-                      <button @click="handleSave('supply-provider')" :disabled="isSaving" :class="[
-                        'api-config-button api-config-button--primary',
-                        isSaving ? 'is-disabled' : ''
-                      ]">
-                        {{ isSaving ? '保存中...' : '保存' }}
-                      </button>
-                      <button @click="handleCancel" class="api-config-button api-config-button--secondary">
-                        取消
-                      </button>
-                      <button @click="testConnection('supply-provider')" :disabled="testingConnection === 'supply-provider'" :class="[
-                        'api-config-button api-config-button--success',
-                        testingConnection === 'supply-provider' ? 'is-disabled' : ''
-                      ]">
-                        {{ testingConnection === 'supply-provider' ? '测试中...' : '测试' }}
-                      </button>
-                    </template>
-                    <template v-else>
-                      <button
-                        v-if="displayedSupplyProvider !== activeSupplyProvider"
-                        @click="applySupplyProviderSelection"
-                        :disabled="isSaving"
-                        :class="[
-                          'api-config-button api-config-button--primary',
-                          isSaving ? 'is-disabled' : ''
-                        ]"
-                      >
-                        {{ isSaving ? '保存中...' : '设为当前数据源' }}
-                      </button>
-                      <button v-else @click="handleEdit('supply-provider')" class="api-config-button api-config-button--primary">
-                        管理数据源
-                      </button>
-                      <button @click="testConnection('supply-provider')" :disabled="testingConnection === 'supply-provider'" :class="[
-                        'api-config-button api-config-button--success',
-                        testingConnection === 'supply-provider' ? 'is-disabled' : ''
-                      ]">
-                        {{ testingConnection === 'supply-provider' ? '测试中...' : '测试' }}
-                      </button>
-                    </template>
-                  </div>
-
                   <div class="supply-provider-config-area">
                     <div v-if="displayedSupplyProvider === 'alibaba-official'" class="supply-provider-config-pane">
-                      <div class="supply-provider-config-title">
-                        <span>1688官方API配置</span>
-                        <small>保留当前已跑通的授权链路和回调参数。</small>
-                      </div>
                 <div class="alibaba-auth-card rounded-2xl overflow-hidden shadow-sm border" :class="alibabaAuthStatus.hasToken && !alibabaAuthStatus.isExpired ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/60' : 'bg-gradient-to-r from-slate-50 to-blue-50/30 border-slate-200/60'">
                   <div class="flex items-center justify-between gap-6 px-8 py-5">
                     <!-- 左侧图标 -->
@@ -350,10 +296,6 @@
                 </div>
                     </div>
                     <div v-else-if="displayedSupplyProvider === 'miaoshou'" class="supply-provider-config-pane">
-                      <div class="supply-provider-config-title">
-                        <span>妙手配置</span>
-                        <small>先保留入口，后续按开放平台实际字段接入。</small>
-                      </div>
                       <div class="provider-config-placeholder">
                         <div class="provider-config-row">
                           <span>授权方式</span>
@@ -370,10 +312,6 @@
                       </div>
                     </div>
                     <div v-else class="supply-provider-config-pane">
-                      <div class="supply-provider-config-title">
-                        <span>浏览器采集配置</span>
-                        <small>作为兜底方案，依赖本机登录态、验证码通过率和风控稳定性。</small>
-                      </div>
                       <div class="provider-config-placeholder">
                         <div class="provider-config-row">
                           <span>采集方式</span>
@@ -875,14 +813,6 @@ const handleSupplyProviderTabChange = (value: string | number | boolean) => {
     return;
   }
   supplyProviderPreview.value = provider === activeSupplyProvider.value ? null : provider;
-};
-
-const applySupplyProviderSelection = async () => {
-  Object.keys(editForm).forEach(key => delete editForm[key]);
-  editForm.provider = displayedSupplyProvider.value;
-  editingPlatform.value = 'supply-provider';
-  await handleSave('supply-provider');
-  supplyProviderPreview.value = null;
 };
 
 const getAlibabaFieldValue = (key: 'appKey' | 'appSecret' | 'redirectUri') => {
@@ -2028,25 +1958,7 @@ onUnmounted(() => {});
   display: flex;
   justify-content: flex-start;
   width: 100%;
-  margin-bottom: 16px;
-}
-
-.supply-provider-note {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-}
-
-.supply-provider-note-row {
-  display: grid;
-  grid-template-columns: 10px 86px 1fr;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  text-align: left;
+  margin-bottom: 0;
 }
 
 .supply-provider-dot {
@@ -2068,34 +1980,12 @@ onUnmounted(() => {});
 }
 
 .supply-provider-config-area {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid #edf2f7;
+  margin-top: 16px;
 }
 
 .supply-provider-config-pane {
   display: grid;
   gap: 14px;
-}
-
-.supply-provider-config-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  text-align: left;
-}
-
-.supply-provider-config-title span {
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.supply-provider-config-title small {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 18px;
 }
 
 .provider-config-placeholder {
