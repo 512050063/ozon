@@ -1956,9 +1956,14 @@ onUnmounted(() => {});
   width: auto;
   margin-bottom: 0;
   padding: 3px;
+  border: 1px solid #dbe4f0;
   border-radius: 10px;
   background: #eef3f9;
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.supply-provider-options :deep(.el-radio-button) {
+  margin-left: 0 !important;
 }
 
 .supply-provider-options :deep(.el-radio-button__inner) {
@@ -1966,6 +1971,8 @@ onUnmounted(() => {});
   height: 32px;
   padding: 0 17px;
   border: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
   border-radius: 8px !important;
   background: transparent;
   color: #475569;
@@ -1989,7 +1996,7 @@ onUnmounted(() => {});
 .supply-provider-options :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
   color: #ffffff;
   background: linear-gradient(135deg, #2f8df3 0%, #2563eb 100%);
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22) !important;
+  box-shadow: none !important;
 }
 
 .supply-provider-config-area {
