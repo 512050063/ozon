@@ -120,10 +120,94 @@
               <div class="api-config-tab-panel px-8 py-6">
                 <div class="mb-5 px-4 py-3 bg-blue-50 rounded-lg">
                   <p class="text-xs text-blue-700 leading-5 text-left">
-                    <strong>配置说明：</strong>1688平台授权配置，用于获取商品详情、库存等信息，请使用阿里千川开放平台申请API应用
+                    <strong>配置说明：</strong>货源模块默认继续使用当前已跑通的1688官方API，同时预留妙手和浏览器采集作为可验证的数据源。切换数据源不会删除1688授权配置。
                   </p>
                 </div>
-                <div class="alibaba-auth-card mb-6 mx-auto max-w-[95%] rounded-2xl overflow-hidden shadow-sm border" :class="alibabaAuthStatus.hasToken && !alibabaAuthStatus.isExpired ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/60' : 'bg-gradient-to-r from-slate-50 to-blue-50/30 border-slate-200/60'">
+                <div class="supply-provider-panel mb-5">
+                  <div class="supply-provider-header">
+                    <div class="text-left">
+                      <div class="text-sm font-bold text-slate-900">货源数据源</div>
+                      <div class="text-xs text-slate-500 mt-1">{{ displayedSupplyProviderDescription }}</div>
+                    </div>
+                    <div class="supply-provider-badges">
+                      <span class="supply-provider-badge">当前：{{ activeSupplyProviderLabel }}</span>
+                      <span v-if="displayedSupplyProvider !== activeSupplyProvider" class="supply-provider-badge is-preview">
+                        预览：{{ displayedSupplyProviderLabel }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <el-radio-group
+                    :model-value="displayedSupplyProvider"
+                    class="supply-provider-options"
+                    @update:model-value="handleSupplyProviderTabChange"
+                  >
+                    <el-radio-button
+                      v-for="option in supplyProviderOptions"
+                      :key="option.value"
+                      :label="option.value"
+                    >
+                      {{ option.label }}
+                    </el-radio-button>
+                  </el-radio-group>
+
+                  <div class="supply-provider-note">
+                    <div v-for="option in supplyProviderOptions" :key="option.value" class="supply-provider-note-row">
+                      <span class="supply-provider-dot" :class="`is-${option.value}`"></span>
+                      <span class="font-semibold text-slate-700">{{ option.label }}</span>
+                      <span class="text-slate-500">{{ option.note }}</span>
+                    </div>
+                  </div>
+
+                  <div class="api-config-actions">
+                    <template v-if="editingPlatform === 'supply-provider'">
+                      <button @click="handleSave('supply-provider')" :disabled="isSaving" :class="[
+                        'api-config-button api-config-button--primary',
+                        isSaving ? 'is-disabled' : ''
+                      ]">
+                        {{ isSaving ? '保存中...' : '保存' }}
+                      </button>
+                      <button @click="handleCancel" class="api-config-button api-config-button--secondary">
+                        取消
+                      </button>
+                      <button @click="testConnection('supply-provider')" :disabled="testingConnection === 'supply-provider'" :class="[
+                        'api-config-button api-config-button--success',
+                        testingConnection === 'supply-provider' ? 'is-disabled' : ''
+                      ]">
+                        {{ testingConnection === 'supply-provider' ? '测试中...' : '测试' }}
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button
+                        v-if="displayedSupplyProvider !== activeSupplyProvider"
+                        @click="applySupplyProviderSelection"
+                        :disabled="isSaving"
+                        :class="[
+                          'api-config-button api-config-button--primary',
+                          isSaving ? 'is-disabled' : ''
+                        ]"
+                      >
+                        {{ isSaving ? '保存中...' : '设为当前数据源' }}
+                      </button>
+                      <button v-else @click="handleEdit('supply-provider')" class="api-config-button api-config-button--primary">
+                        管理数据源
+                      </button>
+                      <button @click="testConnection('supply-provider')" :disabled="testingConnection === 'supply-provider'" :class="[
+                        'api-config-button api-config-button--success',
+                        testingConnection === 'supply-provider' ? 'is-disabled' : ''
+                      ]">
+                        {{ testingConnection === 'supply-provider' ? '测试中...' : '测试' }}
+                      </button>
+                    </template>
+                  </div>
+
+                  <div class="supply-provider-config-area">
+                    <div v-if="displayedSupplyProvider === 'alibaba-official'" class="supply-provider-config-pane">
+                      <div class="supply-provider-config-title">
+                        <span>1688官方API配置</span>
+                        <small>保留当前已跑通的授权链路和回调参数。</small>
+                      </div>
+                <div class="alibaba-auth-card rounded-2xl overflow-hidden shadow-sm border" :class="alibabaAuthStatus.hasToken && !alibabaAuthStatus.isExpired ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/60' : 'bg-gradient-to-r from-slate-50 to-blue-50/30 border-slate-200/60'">
                   <div class="flex items-center justify-between gap-6 px-8 py-5">
                     <!-- 左侧图标 -->
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
@@ -264,6 +348,49 @@
                     </template>
                   </div>
                 </div>
+                    </div>
+                    <div v-else-if="displayedSupplyProvider === 'miaoshou'" class="supply-provider-config-pane">
+                      <div class="supply-provider-config-title">
+                        <span>妙手配置</span>
+                        <small>先保留入口，后续按开放平台实际字段接入。</small>
+                      </div>
+                      <div class="provider-config-placeholder">
+                        <div class="provider-config-row">
+                          <span>授权方式</span>
+                          <strong>待验证开放平台权限</strong>
+                        </div>
+                        <div class="provider-config-row">
+                          <span>店铺标识</span>
+                          <strong>待接入</strong>
+                        </div>
+                        <div class="provider-config-row">
+                          <span>访问令牌</span>
+                          <strong>待接入</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="supply-provider-config-pane">
+                      <div class="supply-provider-config-title">
+                        <span>浏览器采集配置</span>
+                        <small>作为兜底方案，依赖本机登录态、验证码通过率和风控稳定性。</small>
+                      </div>
+                      <div class="provider-config-placeholder">
+                        <div class="provider-config-row">
+                          <span>采集方式</span>
+                          <strong>本机浏览器会话</strong>
+                        </div>
+                        <div class="provider-config-row">
+                          <span>登录状态</span>
+                          <strong>需人工保持有效</strong>
+                        </div>
+                        <div class="provider-config-row">
+                          <span>稳定性</span>
+                          <strong>实验兜底</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </el-tab-pane>
             <!-- Ozon平台 -->
@@ -342,10 +469,11 @@
                         </div>
                       </div>
                       <p class="section-desc assistant-requirement">
-                        必需：Python 3.10+（推荐 3.11/3.12）和 Google Chrome 稳定版。
-                        <a href="https://www.python.org/downloads/" target="_blank" rel="noreferrer" title="打开 Python 官方下载页">Python下载</a>
-                        <span> · </span>
-                        <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" title="打开 Google Chrome 官方下载页">Chrome下载</a>
+                        必需：
+                        <a href="https://www.python.org/downloads/" target="_blank" rel="noreferrer" title="打开 Python 官方下载页">Python 3.10+</a>
+                        （推荐 3.11/3.12）和
+                        <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" title="打开 Google Chrome 官方下载页">Google Chrome</a>
+                        稳定版。
                       </p>
                       <div class="env-check-list" v-if="localAssistantEnv">
                         <div v-for="item in assistantEnvItems" :key="item.key" class="env-check-row">
@@ -602,9 +730,14 @@ const platformConfigs: Record<string, PlatformConfig> = {
       { key: 'appSecret', label: 'App Secret', type: 'password', placeholder: '请输入App Secret', icon: Lock },
     ],
   },
+  'supply-provider': {
+    description: '货源数据源切换配置',
+    fields: [],
+  },
 };
 
-const savedTab = localStorage.getItem('apiConfigActiveTab');
+const normalizeApiConfigTab = (tab: string | null) => tab === 'supply-provider' ? '1688' : (tab || 'wechat-login');
+const savedTab = normalizeApiConfigTab(localStorage.getItem('apiConfigActiveTab'));
 const activeTab = ref(savedTab || 'wechat-login');
 const activeTabRef = computed(() => activeTab.value);
 watch(activeTabRef, (newTab) => {
@@ -702,9 +835,55 @@ const configs = ref<Record<string, any>>({
   'sms': null,
   'translation': null,
   '1688': null,
+  'supply-provider': null,
 });
 
 const editForm = reactive<any>({});
+const supplyProviderPreview = ref<string | null>(null);
+
+const supplyProviderOptions = [
+  { value: 'alibaba-official', label: '1688官方API', note: '当前已跑通，默认继续使用。' },
+  { value: 'miaoshou', label: '妙手', note: '先保留配置入口，等待开放平台权限和字段验证。' },
+  { value: 'crawler', label: '浏览器采集', note: '实验兜底，受登录、验证码和风控影响。' },
+];
+
+const getSupplyProviderValue = (value: any) => {
+  const provider = String(value || '').trim();
+  return supplyProviderOptions.some(option => option.value === provider) ? provider : 'alibaba-official';
+};
+
+const activeSupplyProvider = computed(() => getSupplyProviderValue(configs.value['supply-provider']?.provider));
+const activeSupplyProviderLabel = computed(() => supplyProviderOptions.find(option => option.value === activeSupplyProvider.value)?.label || '1688官方API');
+const activeSupplyProviderDescription = computed(() => supplyProviderOptions.find(option => option.value === activeSupplyProvider.value)?.note || '');
+const displayedSupplyProvider = computed(() => {
+  if (editingPlatform.value === 'supply-provider') {
+    return getSupplyProviderValue(editForm.provider);
+  }
+  return getSupplyProviderValue(supplyProviderPreview.value || activeSupplyProvider.value);
+});
+const displayedSupplyProviderLabel = computed(() => supplyProviderOptions.find(option => option.value === displayedSupplyProvider.value)?.label || '1688官方API');
+const displayedSupplyProviderDescription = computed(() => supplyProviderOptions.find(option => option.value === displayedSupplyProvider.value)?.note || '');
+
+watch(activeSupplyProvider, () => {
+  supplyProviderPreview.value = null;
+});
+
+const handleSupplyProviderTabChange = (value: string | number | boolean) => {
+  const provider = getSupplyProviderValue(value);
+  if (editingPlatform.value === 'supply-provider') {
+    editForm.provider = provider;
+    return;
+  }
+  supplyProviderPreview.value = provider === activeSupplyProvider.value ? null : provider;
+};
+
+const applySupplyProviderSelection = async () => {
+  Object.keys(editForm).forEach(key => delete editForm[key]);
+  editForm.provider = displayedSupplyProvider.value;
+  editingPlatform.value = 'supply-provider';
+  await handleSave('supply-provider');
+  supplyProviderPreview.value = null;
+};
 
 const getAlibabaFieldValue = (key: 'appKey' | 'appSecret' | 'redirectUri') => {
   if (editingPlatform.value === '1688') {
@@ -728,10 +907,12 @@ const handleEditFormUpdate = (value: Record<string, string>) => {
 
 const handleEdit = (platform: string) => {
   editingPlatform.value = platform;
+  Object.keys(editForm).forEach(key => delete editForm[key]);
   if (configs.value[platform]) {
     Object.assign(editForm, configs.value[platform]);
-  } else {
-    Object.keys(editForm).forEach(key => delete editForm[key]);
+  }
+  if (platform === 'supply-provider' && !editForm.provider) {
+    editForm.provider = activeSupplyProvider.value;
   }
 };
 
@@ -1580,7 +1761,7 @@ onUnmounted(() => {});
 
 .ozon-assistant-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(230px, 0.85fr) minmax(420px, 1.35fr) minmax(260px, 0.9fr);
   gap: 12px;
   padding: 16px 22px;
   background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
@@ -1624,7 +1805,7 @@ onUnmounted(() => {});
 .section-desc {
   color: #64748b;
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
   margin: 8px 0 0;
 }
 
@@ -1684,17 +1865,19 @@ onUnmounted(() => {});
 
 .env-check-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 2px;
 }
 
 .env-check-row {
   display: grid;
-  grid-template-columns: 10px 72px minmax(0, 1fr);
+  grid-template-columns: 10px 68px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   color: #64748b;
   font-size: 12px;
+  min-width: 0;
 }
 
 .assistant-mini-actions {
@@ -1778,6 +1961,10 @@ onUnmounted(() => {});
     grid-template-columns: 1fr;
   }
 
+  .env-check-list {
+    grid-template-columns: 1fr;
+  }
+
   .ozon-control-header {
     align-items: flex-start;
     flex-direction: column;
@@ -1788,8 +1975,158 @@ onUnmounted(() => {});
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 680px;
-  margin-left: 32px;
+  max-width: 720px;
+  margin: 0;
+}
+
+.supply-provider-panel {
+  width: 95%;
+  margin: 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  background: #fff;
+}
+
+.supply-provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.supply-provider-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.supply-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.supply-provider-badge.is-preview {
+  color: #7c2d12;
+  background: #ffedd5;
+  border-color: #fed7aa;
+}
+
+.supply-provider-options {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.supply-provider-note {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+}
+
+.supply-provider-note-row {
+  display: grid;
+  grid-template-columns: 10px 86px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.supply-provider-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.supply-provider-dot.is-alibaba-official {
+  background: #38bdf8;
+}
+
+.supply-provider-dot.is-miaoshou {
+  background: #34d399;
+}
+
+.supply-provider-dot.is-crawler {
+  background: #f59e0b;
+}
+
+.supply-provider-config-area {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #edf2f7;
+}
+
+.supply-provider-config-pane {
+  display: grid;
+  gap: 14px;
+}
+
+.supply-provider-config-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+}
+
+.supply-provider-config-title span {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.supply-provider-config-title small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.provider-config-placeholder {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.provider-config-row {
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.provider-config-row span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.provider-config-row strong {
+  display: block;
+  margin-top: 8px;
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
 }
 
 .api-config-field {
