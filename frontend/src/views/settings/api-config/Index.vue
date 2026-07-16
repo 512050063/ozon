@@ -124,11 +124,21 @@
                   </p>
                 </div>
                 <div class="supply-provider-panel mb-5">
-                  <div class="supply-provider-header">
-                    <div class="text-left">
-                      <div class="text-sm font-bold text-slate-900">货源数据源</div>
-                      <div class="text-xs text-slate-500 mt-1">{{ displayedSupplyProviderDescription }}</div>
-                    </div>
+                  <div class="supply-provider-switch-row">
+                    <el-radio-group
+                      :model-value="displayedSupplyProvider"
+                      class="supply-provider-options"
+                      @update:model-value="handleSupplyProviderTabChange"
+                    >
+                      <el-radio-button
+                        v-for="option in supplyProviderOptions"
+                        :key="option.value"
+                        :label="option.value"
+                      >
+                        {{ option.label }}
+                      </el-radio-button>
+                    </el-radio-group>
+
                     <div class="supply-provider-badges">
                       <span class="supply-provider-badge">当前：{{ activeSupplyProviderLabel }}</span>
                       <span v-if="displayedSupplyProvider !== activeSupplyProvider" class="supply-provider-badge is-preview">
@@ -136,20 +146,6 @@
                       </span>
                     </div>
                   </div>
-
-                  <el-radio-group
-                    :model-value="displayedSupplyProvider"
-                    class="supply-provider-options"
-                    @update:model-value="handleSupplyProviderTabChange"
-                  >
-                    <el-radio-button
-                      v-for="option in supplyProviderOptions"
-                      :key="option.value"
-                      :label="option.value"
-                    >
-                      {{ option.label }}
-                    </el-radio-button>
-                  </el-radio-group>
 
                   <div class="supply-provider-config-area">
                     <div v-if="displayedSupplyProvider === 'alibaba-official'" class="supply-provider-config-pane">
@@ -792,7 +788,6 @@ const getSupplyProviderValue = (value: any) => {
 
 const activeSupplyProvider = computed(() => getSupplyProviderValue(configs.value['supply-provider']?.provider));
 const activeSupplyProviderLabel = computed(() => supplyProviderOptions.find(option => option.value === activeSupplyProvider.value)?.label || '1688官方API');
-const activeSupplyProviderDescription = computed(() => supplyProviderOptions.find(option => option.value === activeSupplyProvider.value)?.note || '');
 const displayedSupplyProvider = computed(() => {
   if (editingPlatform.value === 'supply-provider') {
     return getSupplyProviderValue(editForm.provider);
@@ -800,7 +795,6 @@ const displayedSupplyProvider = computed(() => {
   return getSupplyProviderValue(supplyProviderPreview.value || activeSupplyProvider.value);
 });
 const displayedSupplyProviderLabel = computed(() => supplyProviderOptions.find(option => option.value === displayedSupplyProvider.value)?.label || '1688官方API');
-const displayedSupplyProviderDescription = computed(() => supplyProviderOptions.find(option => option.value === displayedSupplyProvider.value)?.note || '');
 
 watch(activeSupplyProvider, () => {
   supplyProviderPreview.value = null;
@@ -1918,12 +1912,12 @@ onUnmounted(() => {});
   background: #fff;
 }
 
-.supply-provider-header {
-  display: flex;
+.supply-provider-switch-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
 }
 
 .supply-provider-badges {
@@ -1931,14 +1925,16 @@ onUnmounted(() => {});
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
+  justify-self: end;
   gap: 8px;
+  min-height: 42px;
 }
 
 .supply-provider-badge {
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 999px;
   color: #0369a1;
   background: #e0f2fe;
@@ -1957,26 +1953,39 @@ onUnmounted(() => {});
 .supply-provider-options {
   display: flex;
   justify-content: flex-start;
-  width: 100%;
+  width: auto;
   margin-bottom: 0;
+  padding: 3px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
-.supply-provider-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
+.supply-provider-options :deep(.el-radio-button__inner) {
+  min-width: 112px;
+  height: 34px;
+  padding: 0 18px;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent;
+  color: #475569;
+  box-shadow: none !important;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 34px;
+  transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.supply-provider-dot.is-alibaba-official {
-  background: #38bdf8;
+.supply-provider-options :deep(.el-radio-button__inner:hover) {
+  color: #2563eb;
+  background: #eef5ff;
 }
 
-.supply-provider-dot.is-miaoshou {
-  background: #34d399;
-}
-
-.supply-provider-dot.is-crawler {
-  background: #f59e0b;
+.supply-provider-options :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f8df3 0%, #2563eb 100%);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22) !important;
 }
 
 .supply-provider-config-area {
