@@ -1927,19 +1927,19 @@ onUnmounted(() => {});
   flex-wrap: wrap;
   justify-self: end;
   gap: 8px;
-  min-height: 42px;
+  min-height: 38px;
 }
 
 .supply-provider-badge {
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding: 0 12px;
+  height: 26px;
+  padding: 0 9px;
   border-radius: 999px;
   color: #0369a1;
   background: #e0f2fe;
   border: 1px solid #bae6fd;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1956,16 +1956,15 @@ onUnmounted(() => {});
   width: auto;
   margin-bottom: 0;
   padding: 3px;
-  border: 1px solid #dbe4f0;
   border-radius: 10px;
-  background: #f8fafc;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  background: #eef3f9;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .supply-provider-options :deep(.el-radio-button__inner) {
   min-width: 112px;
-  height: 34px;
-  padding: 0 18px;
+  height: 32px;
+  padding: 0 17px;
   border: 0 !important;
   border-radius: 8px !important;
   background: transparent;
@@ -1973,13 +1972,18 @@ onUnmounted(() => {});
   box-shadow: none !important;
   font-size: 13px;
   font-weight: 600;
-  line-height: 34px;
+  line-height: 32px;
   transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.supply-provider-options :deep(.el-radio-button:first-child .el-radio-button__inner),
+.supply-provider-options :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 8px !important;
 }
 
 .supply-provider-options :deep(.el-radio-button__inner:hover) {
   color: #2563eb;
-  background: #eef5ff;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .supply-provider-options :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
